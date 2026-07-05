@@ -1,0 +1,4 @@
+*.log
+/testdata/raw/
+studio-doctor
+studio-doctor.exe
