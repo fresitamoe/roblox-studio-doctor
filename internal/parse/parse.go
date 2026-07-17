@@ -2,6 +2,7 @@ package parse
 
 import (
 	"bufio"
+	"errors"
 	"io"
 	"strconv"
 	"strings"
@@ -35,7 +36,7 @@ func (c Coverage) Ratio() float64 {
 	return float64(c.Parsed) / float64(c.Total)
 }
 
-const wallLayout = "2006-01-02T15:04:05.000Z"
+const wallLayout = "2006-01-02T15:04:05.999Z"
 
 const maxLine = 1 << 20
 
@@ -63,6 +64,11 @@ func Read(r io.Reader) ([]Event, Coverage, error) {
 		out = append(out, ev)
 	}
 	if err := sc.Err(); err != nil {
+		if errors.Is(err, bufio.ErrTooLong) {
+			cov.Total++
+			cov.Skipped++
+			return out, cov, nil
+		}
 		return out, cov, err
 	}
 	return out, cov, nil
@@ -92,15 +98,15 @@ func parseLine(line string) (Event, bool) {
 		return Event{}, false
 	}
 
-	chan_ := rest[open+1 : closeIdx]
-	chan_ = strings.TrimPrefix(chan_, "FLog::")
+	channel := rest[open+1 : closeIdx]
+	channel = strings.TrimPrefix(channel, "FLog::")
 
 	return Event{
 		Wall:     wall.UTC(),
 		Mono:     mono,
 		Thread:   parts[2],
 		Severity: strings.TrimSpace(rest[:open]),
-		Channel:  chan_,
+		Channel:  channel,
 		Message:  strings.TrimSpace(rest[closeIdx+1:]),
 		Raw:      line,
 	}, true

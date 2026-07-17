@@ -84,3 +84,35 @@ func TestCoverageRatioEmpty(t *testing.T) {
 		t.Errorf("empty coverage ratio = %v, want 1.0", got)
 	}
 }
+
+func TestReadFractionalSeconds(t *testing.T) {
+	for _, ts := range []string{
+		"2026-07-13T23:31:35.625Z",
+		"2026-07-13T23:31:35.6Z",
+		"2026-07-13T23:31:35.625123Z",
+	} {
+		line := ts + `,665.625732,0128,6,Info [FLog::TeamCreateManager] hello`
+		evs, cov, err := Read(strings.NewReader(line + "\n"))
+		if err != nil {
+			t.Fatalf("%s: %v", ts, err)
+		}
+		if len(evs) != 1 || cov.Skipped != 0 {
+			t.Errorf("%s: got %d events, %d skipped", ts, len(evs), cov.Skipped)
+		}
+	}
+}
+
+func TestReadOverlongNoError(t *testing.T) {
+	huge := strings.Repeat("x", 2<<20)
+	in := teamCreateLine + "\n" + huge + "\n"
+	evs, cov, err := Read(strings.NewReader(in))
+	if err != nil {
+		t.Fatalf("bad content must never error, got %v", err)
+	}
+	if len(evs) != 1 {
+		t.Errorf("got %d events, want the 1 good line", len(evs))
+	}
+	if cov.Skipped != 1 {
+		t.Errorf("skipped = %d, want 1", cov.Skipped)
+	}
+}
