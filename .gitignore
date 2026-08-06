@@ -1,4 +1,5 @@
 *.log
+!/testdata/fixtures/*.log # on purpose, *.log blocks the test fixtures otherwise
 /testdata/raw/
 studio-doctor
 studio-doctor.exe

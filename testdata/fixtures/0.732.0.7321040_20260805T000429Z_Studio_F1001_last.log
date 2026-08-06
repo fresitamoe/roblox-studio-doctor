@@ -1,0 +1,69 @@
+2026-08-05T00:04:30.847Z,0.847353,072c,6,Info [FLog::StudioApplicationState] State: Qt::ApplicationInactive
+2026-08-05T00:04:30.847Z,0.847353,072c,6,Info [FLog::StudioApplicationState] Screen 0: 0x7f734f6070c0
+2026-08-05T00:04:30.847Z,0.847353,072c,6,Info [FLog::StudioApplicationState] PrimaryScreen: 0x7f734f6070c0
+2026-08-05T00:04:32.001Z,2.001014,072c,6,Info [FLog::StudioApplicationState] State: Qt::ApplicationActive
+2026-08-05T00:04:39.673Z,9.673166,0790,6,Info [FLog::TeamCreateManager] onConnectionAccepted
+2026-08-05T00:08:13.579Z,223.579605,072c,6,Info [FLog::StudioApplicationState] State: Qt::ApplicationInactive
+2026-08-05T00:08:13.868Z,223.868057,072c,6,Info [FLog::StudioApplicationState] State: Qt::ApplicationActive
+2026-08-05T00:10:17.702Z,347.702545,072c,6,Info [FLog::StudioApplicationState] State: Qt::ApplicationInactive
+2026-08-05T00:10:17.967Z,347.967377,072c,6,Info [FLog::StudioApplicationState] State: Qt::ApplicationActive
+2026-08-05T00:10:23.676Z,353.676514,072c,6,Info [FLog::StudioApplicationState] State: Qt::ApplicationInactive
+2026-08-05T00:10:26.315Z,356.315063,072c,6,Info [FLog::StudioApplicationState] State: Qt::ApplicationActive
+2026-08-05T00:14:47.505Z,617.505920,072c,6,Info [FLog::StudioApplicationState] State: Qt::ApplicationInactive
+2026-08-05T00:42:25.552Z,2275.552002,072c,6,Info [FLog::StudioApplicationState] State: Qt::ApplicationActive
+2026-08-05T00:57:26.164Z,3176.164307,072c,6,Info [FLog::StudioApplicationState] State: Qt::ApplicationInactive
+2026-08-05T00:57:32.525Z,3182.525635,072c,6,Info [FLog::StudioApplicationState] State: Qt::ApplicationActive
+2026-08-05T00:57:34.565Z,3184.565918,072c,6,Info [FLog::StudioApplicationState] State: Qt::ApplicationInactive
+2026-08-05T00:57:36.448Z,3186.448975,072c,6,Info [FLog::StudioApplicationState] State: Qt::ApplicationActive
+2026-08-05T01:11:45.662Z,4035.662842,072c,6,Info [FLog::StudioApplicationState] State: Qt::ApplicationInactive
+2026-08-05T01:11:48.054Z,4038.054688,072c,6,Info [FLog::StudioApplicationState] State: Qt::ApplicationActive
+2026-08-05T01:11:48.642Z,4038.642090,072c,6,Info [FLog::StudioApplicationState] State: Qt::ApplicationInactive
+2026-08-05T01:11:52.593Z,4042.593994,072c,6,Info [FLog::StudioApplicationState] State: Qt::ApplicationActive
+2026-08-05T01:12:03.426Z,4053.426270,072c,6,Info [FLog::StudioApplicationState] State: Qt::ApplicationInactive
+2026-08-05T01:12:03.663Z,4053.663330,072c,6,Info [FLog::StudioApplicationState] State: Qt::ApplicationActive
+2026-08-05T01:12:23.351Z,4073.351074,072c,6,Info [FLog::StudioApplicationState] State: Qt::ApplicationInactive
+2026-08-05T01:12:23.809Z,4073.809814,072c,6,Info [FLog::StudioApplicationState] State: Qt::ApplicationActive
+2026-08-05T01:12:35.989Z,4085.989990,072c,6,Info [FLog::StudioApplicationState] State: Qt::ApplicationInactive
+2026-08-05T01:12:45.240Z,4095.240967,072c,6,Info [FLog::StudioApplicationState] State: Qt::ApplicationActive
+2026-08-05T01:12:57.295Z,4107.295410,072c,6,Info [FLog::StudioApplicationState] State: Qt::ApplicationInactive
+2026-08-05T01:15:48.060Z,4278.060547,072c,6,Info [FLog::StudioApplicationState] State: Qt::ApplicationActive
+2026-08-05T01:17:54.717Z,4404.717773,072c,6,Info [FLog::StudioApplicationState] State: Qt::ApplicationInactive
+2026-08-05T01:17:55.721Z,4405.721191,072c,6,Info [FLog::StudioApplicationState] State: Qt::ApplicationActive
+2026-08-05T02:17:43.620Z,7993.620117,0790,6,Warning [FLog::AppMemUsageStatus] 2492914692.1044687361
+2026-08-05T02:17:43.736Z,7993.736816,078c,6,Warning [FLog::AppMemUsageStatus] 3748799858.1044687361
+2026-08-05T02:18:33.590Z,8043.590332,0734,6,Warning [FLog::AppMemUsageStatus] 3784003596.1044687361
+2026-08-05T02:19:01.380Z,8071.380859,072c,6,Info [FLog::StudioApplicationState] State: Qt::ApplicationInactive
+2026-08-05T02:19:03.441Z,8073.441406,072c,6,Info [FLog::StudioApplicationState] State: Qt::ApplicationActive
+2026-08-05T02:33:42.443Z,8952.443359,072c,6,Info [FLog::StudioApplicationState] State: Qt::ApplicationInactive
+2026-08-05T02:37:35.194Z,9185.194336,072c,6,Info [FLog::StudioApplicationState] State: Qt::ApplicationActive
+2026-08-05T02:40:09.876Z,9339.876953,072c,6,Info [FLog::StudioApplicationState] State: Qt::ApplicationInactive
+2026-08-05T02:40:10.160Z,9340.160156,072c,6,Info [FLog::StudioApplicationState] State: Qt::ApplicationActive
+2026-08-05T02:40:36.659Z,9366.659180,072c,6,Info [FLog::StudioApplicationState] State: Qt::ApplicationInactive
+2026-08-05T02:40:37.283Z,9367.283203,072c,6,Info [FLog::StudioApplicationState] State: Qt::ApplicationActive
+2026-08-05T02:44:58.397Z,9628.397461,072c,6,Info [FLog::StudioApplicationState] State: Qt::ApplicationInactive
+2026-08-05T02:44:59.860Z,9629.860352,072c,6,Info [FLog::StudioApplicationState] State: Qt::ApplicationActive
+2026-08-05T02:45:00.669Z,9630.669922,072c,6,Info [FLog::StudioApplicationState] State: Qt::ApplicationInactive
+2026-08-05T02:45:18.048Z,9648.048828,072c,6,Info [FLog::StudioApplicationState] State: Qt::ApplicationActive
+2026-08-05T02:45:34.061Z,9664.061523,072c,6,Info [FLog::StudioApplicationState] State: Qt::ApplicationInactive
+2026-08-05T02:45:35.855Z,9665.855469,072c,6,Info [FLog::StudioApplicationState] State: Qt::ApplicationActive
+2026-08-05T02:48:14.654Z,9824.654297,072c,6,Info [FLog::StudioApplicationState] State: Qt::ApplicationInactive
+2026-08-05T02:48:15.513Z,9825.513672,072c,6,Info [FLog::StudioApplicationState] State: Qt::ApplicationActive
+2026-08-05T02:48:25.534Z,9835.534180,072c,6,Info [FLog::StudioApplicationState] State: Qt::ApplicationInactive
+2026-08-05T02:48:26.955Z,9836.955078,072c,6,Info [FLog::StudioApplicationState] State: Qt::ApplicationActive
+2026-08-05T02:48:31.512Z,9841.512695,072c,6,Info [FLog::StudioApplicationState] State: Qt::ApplicationInactive
+2026-08-05T02:48:36.466Z,9846.466797,072c,6,Info [FLog::StudioApplicationState] State: Qt::ApplicationActive
+2026-08-05T02:48:40.118Z,9850.118164,0734,6,Warning [FLog::TeamCreateManager] Disconnected due to DisconnectClientInitiated (285). LostConnection = false
+2026-08-05T02:50:05.640Z,9935.640625,0790,6,Info [FLog::TeamCreateManager] onConnectionAccepted
+2026-08-05T02:52:37.845Z,10087.845703,072c,6,Info [FLog::StudioApplicationState] State: Qt::ApplicationInactive
+2026-08-05T02:52:38.504Z,10088.504883,072c,6,Info [FLog::StudioApplicationState] State: Qt::ApplicationActive
+2026-08-05T02:54:03.807Z,10173.807617,072c,6,Info [FLog::StudioApplicationState] State: Qt::ApplicationInactive
+2026-08-05T02:54:10.243Z,10180.243164,072c,6,Info [FLog::StudioApplicationState] State: Qt::ApplicationActive
+2026-08-05T02:54:13.118Z,10183.118164,072c,6,Info [FLog::StudioApplicationState] State: Qt::ApplicationInactive
+2026-08-05T02:54:16.883Z,10186.883789,072c,6,Info [FLog::StudioApplicationState] State: Qt::ApplicationActive
+2026-08-05T02:54:19.923Z,10189.923828,072c,6,Info [FLog::StudioApplicationState] State: Qt::ApplicationInactive
+2026-08-05T02:54:21.668Z,10191.668945,0734,6,Warning [FLog::TeamCreateManager] Disconnected due to DisconnectClientInitiated (285). LostConnection = false
+2026-08-05T02:54:22.891Z,10192.891602,072c,6,Info [FLog::StudioApplicationState] LastWindowClosed
+2026-08-05T02:54:22.922Z,10192.922852,072c,6,Info [FLog::StudioApplicationState] LastWindowClosed
+2026-08-05T02:54:25.150Z,10195.150391,072c,6,Info [FLog::StudioApplicationState] AboutToQuit
+2026-08-05T02:54:25.167Z,10195.167969,072c,6,Info [FLog::AppMemUsageStatus] 3616824723
+2026-08-05T02:54:25.167Z,10195.167969,072c,6,Warning [FLog::AppMemUsageStatus] 1044687361

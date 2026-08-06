@@ -1,0 +1,12 @@
+2026-08-05T00:03:51.713Z,0.713499,0468,6,Info [FLog::StudioApplicationState] State: Qt::ApplicationInactive
+2026-08-05T00:03:51.713Z,0.713499,0468,6,Info [FLog::StudioApplicationState] Screen 0: 0x7f5128a066f0
+2026-08-05T00:03:51.713Z,0.713499,0468,6,Info [FLog::StudioApplicationState] PrimaryScreen: 0x7f5128a066f0
+2026-08-05T00:03:52.901Z,1.901565,0468,6,Info [FLog::StudioApplicationState] State: Qt::ApplicationActive
+2026-08-05T00:03:59.380Z,8.380201,04f8,6,Info [FLog::TeamCreateManager] onConnectionAccepted
+2026-08-05T00:04:23.639Z,32.639343,0470,6,Warning [FLog::TeamCreateManager] Disconnected due to DisconnectClientInitiated (285). LostConnection = false
+2026-08-05T00:04:23.868Z,32.868557,0468,6,Info [FLog::StudioApplicationState] State: Qt::ApplicationInactive
+2026-08-05T00:04:24.566Z,33.566956,0468,6,Info [FLog::StudioApplicationState] LastWindowClosed
+2026-08-05T00:04:24.591Z,33.591923,0468,6,Info [FLog::StudioApplicationState] LastWindowClosed
+2026-08-05T00:04:25.206Z,34.206638,0468,6,Info [FLog::StudioApplicationState] AboutToQuit
+2026-08-05T00:04:25.220Z,34.220745,0468,6,Info [FLog::AppMemUsageStatus] 3616824723
+2026-08-05T00:04:25.220Z,34.220745,0468,6,Warning [FLog::AppMemUsageStatus] 1044687361

@@ -1,0 +1,16 @@
+2026-08-04T23:34:05.557Z,5.557419,00f0,6,Info [FLog::StudioApplicationState] State: Qt::ApplicationInactive
+2026-08-04T23:34:05.557Z,5.557419,00f0,6,Info [FLog::StudioApplicationState] Screen 0: 0x7f6063b08150
+2026-08-04T23:34:05.557Z,5.557419,00f0,6,Info [FLog::StudioApplicationState] PrimaryScreen: 0x7f6063b08150
+2026-08-04T23:34:06.659Z,6.659988,00f0,6,Info [FLog::StudioApplicationState] State: Qt::ApplicationActive
+2026-08-04T23:36:58.574Z,178.574921,019c,6,Info [FLog::TeamCreateManager] onConnectionAccepted
+2026-08-04T23:55:32.030Z,1292.030396,0198,6,Warning [FLog::TeamCreateManager] Disconnected due to Lost connection to the game server, please reconnect (277). LostConnection = false
+2026-08-04T23:55:55.461Z,1315.461670,01a0,6,Info [FLog::TeamCreateManager] onConnectionAccepted
+2026-08-05T00:01:52.214Z,1672.214844,00f0,6,Info [FLog::StudioApplicationState] State: Qt::ApplicationInactive
+2026-08-05T00:01:52.838Z,1672.838013,00f0,6,Info [FLog::StudioApplicationState] State: Qt::ApplicationActive
+2026-08-05T00:01:55.730Z,1675.730103,00f0,6,Info [FLog::StudioApplicationState] State: Qt::ApplicationInactive
+2026-08-05T00:01:56.432Z,1676.432617,0138,6,Warning [FLog::TeamCreateManager] Disconnected due to DisconnectClientInitiated (285). LostConnection = false
+2026-08-05T00:01:57.667Z,1677.667969,00f0,6,Info [FLog::StudioApplicationState] LastWindowClosed
+2026-08-05T00:01:57.696Z,1677.696167,00f0,6,Info [FLog::StudioApplicationState] LastWindowClosed
+2026-08-05T00:01:59.771Z,1679.771851,00f0,6,Info [FLog::StudioApplicationState] AboutToQuit
+2026-08-05T00:01:59.788Z,1679.788818,00f0,6,Info [FLog::AppMemUsageStatus] 3616824723
+2026-08-05T00:01:59.788Z,1679.788818,00f0,6,Warning [FLog::AppMemUsageStatus] 1044687361
