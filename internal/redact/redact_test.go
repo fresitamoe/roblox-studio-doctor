@@ -72,3 +72,44 @@ func TestEventsRedactsMessages(t *testing.T) {
 		t.Errorf("id survived in event message: %q", got[0].Message)
 	}
 }
+
+func TestEventsKeepsMemoryNumbers(t *testing.T) {
+	for _, msg := range []string{
+		"3616824723",
+		"3748799858.1044687361",
+	} {
+		in := []parse.Event{{Channel: "AppMemUsageStatus", Message: msg}}
+		got := Events(in)
+		if len(got) != 1 {
+			t.Fatalf("got %d events, want 1", len(got))
+		}
+		if got[0].Message != msg {
+			t.Errorf("got %q, want %q", got[0].Message, msg)
+		}
+	}
+}
+
+func TestEventsRedactsNonNumericMem(t *testing.T) {
+	in := []parse.Event{{Channel: "AppMemUsageStatus", Message: "leaked path /home/realname/file 10553200977"}}
+	got := Events(in)
+	if len(got) != 1 {
+		t.Fatalf("got %d events, want 1", len(got))
+	}
+	if strings.Contains(got[0].Message, "realname") {
+		t.Errorf("username survived: %q", got[0].Message)
+	}
+	if strings.Contains(got[0].Message, "10553200977") {
+		t.Errorf("id survived non-numeric payload: %q", got[0].Message)
+	}
+}
+
+func TestEventsClearsRaw(t *testing.T) {
+	in := []parse.Event{{Channel: "TeamCreateManager", Message: "Disconnected", Raw: "the full original log line, unredacted"}}
+	got := Events(in)
+	if len(got) != 1 {
+		t.Fatalf("got %d events, want 1", len(got))
+	}
+	if got[0].Raw != "" {
+		t.Errorf("Raw was not cleared: %q", got[0].Raw)
+	}
+}
