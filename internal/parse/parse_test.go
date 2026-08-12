@@ -116,3 +116,37 @@ func TestReadOverlongNoError(t *testing.T) {
 		t.Errorf("skipped = %d, want 1", cov.Skipped)
 	}
 }
+
+func TestReadNoSeverityWord(t *testing.T) {
+	line := `2026-07-13T17:05:11.254Z,0.254081,00f0,6 [FLog::Output] Creating PolicyContext(Root)`
+	evs, cov, err := Read(strings.NewReader(line + "\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(evs) != 1 {
+		t.Fatalf("got %d events, want 1", len(evs))
+	}
+	if evs[0].Channel != "Output" {
+		t.Errorf("channel = %q", evs[0].Channel)
+	}
+	if evs[0].Severity != "" {
+		t.Errorf("severity = %q, want empty", evs[0].Severity)
+	}
+	if evs[0].Message != "Creating PolicyContext(Root)" {
+		t.Errorf("message = %q", evs[0].Message)
+	}
+	if cov.Skipped != 0 {
+		t.Errorf("skipped = %d, want 0", cov.Skipped)
+	}
+}
+
+func TestReadCommasInMessage(t *testing.T) {
+	line := `2026-07-13T17:05:11.254Z,0.254081,00f0,6,Info [FLog::Output] a, b, c`
+	evs, _, err := Read(strings.NewReader(line + "\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(evs) != 1 || evs[0].Message != "a, b, c" {
+		t.Fatalf("got %+v, want message 'a, b, c'", evs)
+	}
+}

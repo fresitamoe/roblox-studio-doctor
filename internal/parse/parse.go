@@ -77,37 +77,40 @@ func Read(r io.Reader) ([]Event, Coverage, error) {
 // Studio writes two line shapes, one with a severity word and one without
 // Majority of real lines most likely the second kind
 func parseLine(line string) (Event, bool) {
-
-	parts := strings.SplitN(line, ",", 5)
-	if len(parts) < 5 {
+	open := strings.IndexByte(line, '[')
+	if open < 0 {
 		return Event{}, false
 	}
-	wall, err := time.Parse(wallLayout, parts[0])
+	rel := strings.IndexByte(line[open:], ']')
+	if rel < 0 {
+		return Event{}, false
+	}
+	closeIdx := open + rel
+
+	fields := strings.Split(line[:open], ",")
+	if len(fields) < 4 {
+		return Event{}, false
+	}
+	wall, err := time.Parse(wallLayout, fields[0])
 	if err != nil {
 		return Event{}, false
 	}
-	mono, err := strconv.ParseFloat(parts[1], 64)
+	mono, err := strconv.ParseFloat(fields[1], 64)
 	if err != nil {
 		return Event{}, false
 	}
-
-	rest := parts[4]
-	open := strings.IndexByte(rest, '[')
-	closeIdx := strings.IndexByte(rest, ']')
-	if open < 0 || closeIdx < open {
-		return Event{}, false
+	severity := ""
+	if len(fields) >= 5 {
+		severity = strings.TrimSpace(fields[4])
 	}
-
-	channel := rest[open+1 : closeIdx]
-	channel = strings.TrimPrefix(channel, "FLog::")
 
 	return Event{
 		Wall:     wall.UTC(),
 		Mono:     mono,
-		Thread:   parts[2],
-		Severity: strings.TrimSpace(rest[:open]),
-		Channel:  channel,
-		Message:  strings.TrimSpace(rest[closeIdx+1:]),
+		Thread:   fields[2],
+		Severity: severity,
+		Channel:  strings.TrimPrefix(line[open+1:closeIdx], "FLog::"),
+		Message:  strings.TrimSpace(line[closeIdx+1:]),
 		Raw:      line,
 	}, true
 }
