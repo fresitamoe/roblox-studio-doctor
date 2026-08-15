@@ -1,0 +1,42 @@
+name: ci
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+      - run: go vet ./...
+      - run: go test ./... -race
+
+  leak-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: committed fixtures must contain no raw identifiers
+        run: |
+          # AppMemUsageStatus numbers are just memory readings not IDs, so they can stay
+          if grep -rEn '[0-9]{8,}' testdata/fixtures/ \
+               | grep -v 'AppMemUsageStatus' \
+               | grep -vE '^[^:]+:[0-9]+:20[0-9]{6}T' \
+               | grep -v 'id_'; then
+            echo "::error::raw identifier found in committed fixtures"
+            exit 1
+          fi
+      - name: no raw studio logs may be tracked
+        run: |
+          if git ls-files '*.log' | grep -v '^testdata/fixtures/'; then
+            echo "::error::a raw Studio log is tracked outside testdata/fixtures/"
+            exit 1
+          fi
