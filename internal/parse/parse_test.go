@@ -1,6 +1,7 @@
 package parse
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -148,5 +149,50 @@ func TestReadCommasInMessage(t *testing.T) {
 	}
 	if len(evs) != 1 || evs[0].Message != "a, b, c" {
 		t.Fatalf("got %+v, want message 'a, b, c'", evs)
+	}
+}
+
+func TestReadPastOverlong(t *testing.T) {
+	var b strings.Builder
+	b.WriteString(teamCreateLine + "\n")
+	b.WriteString(strings.Repeat("x", 3<<20) + "\n")
+	const tail = 500
+	for i := 0; i < tail; i++ {
+		fmt.Fprintf(&b, "2026-07-13T23:32:%02d.000Z,%d.0,0128,6,Info [FLog::AppMemUsageStatus] %d\n",
+			i%60, 700+i, 3_000_000_000+i)
+	}
+	b.WriteString(`2026-07-13T23:40:00.000Z,999.0,0128,6,Warning [FLog::TeamCreateManager] Disconnected due to TimeAsleepDisconnectThreshold (17). LostConnection = true` + "\n")
+
+	evs, cov, err := Read(strings.NewReader(b.String()))
+	if err != nil {
+		t.Fatalf("bad content must never error, got %v", err)
+	}
+	want := 1 + tail + 1
+	if len(evs) != want {
+		t.Fatalf("got %d events, want %d", len(evs), want)
+	}
+	if evs[len(evs)-1].Channel != "TeamCreateManager" {
+		t.Errorf("last event = %+v", evs[len(evs)-1])
+	}
+	if cov.Total != want+1 || cov.Skipped != 1 || cov.Parsed != want {
+		t.Errorf("coverage = %+v", cov)
+	}
+	if cov.Ratio() < 0.99 {
+		t.Errorf("ratio = %v", cov.Ratio())
+	}
+}
+
+func TestReadManyOverlong(t *testing.T) {
+	huge := strings.Repeat("y", 2<<20)
+	in := huge + "\n" + teamCreateLine + "\n" + huge + "\n" + teamCreateLine + "\n"
+	evs, cov, err := Read(strings.NewReader(in))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(evs) != 2 {
+		t.Fatalf("got %d events, want 2", len(evs))
+	}
+	if cov.Skipped != 2 || cov.Total != 4 {
+		t.Errorf("coverage = %+v, want total 4 / skipped 2", cov)
 	}
 }

@@ -40,38 +40,61 @@ const wallLayout = "2006-01-02T15:04:05.999Z"
 
 const maxLine = 1 << 20
 
+const readBuf = 64 * 1024
+
 // Read parses log lines from r. Bad content is skipped, not an error
 func Read(r io.Reader) ([]Event, Coverage, error) {
 	cov := Coverage{}
 	var out []Event
 
-	sc := bufio.NewScanner(r)
-	sc.Buffer(make([]byte, 0, 64*1024), maxLine)
+	br := bufio.NewReaderSize(r, readBuf)
+	for n := 1; ; n++ {
+		line, overlong, err := readLine(br)
 
-	for n := 1; sc.Scan(); n++ {
-		line := sc.Text()
-		if strings.TrimSpace(line) == "" {
-			continue
-		}
-		cov.Total++
-		ev, ok := parseLine(line)
-		if !ok {
-			cov.Skipped++
-			continue
-		}
-		ev.LineNo = n
-		cov.Parsed++
-		out = append(out, ev)
-	}
-	if err := sc.Err(); err != nil {
-		if errors.Is(err, bufio.ErrTooLong) {
+		switch {
+		case overlong:
 			cov.Total++
 			cov.Skipped++
-			return out, cov, nil
+		case strings.TrimSpace(line) != "":
+			cov.Total++
+			if ev, ok := parseLine(line); ok {
+				ev.LineNo = n
+				cov.Parsed++
+				out = append(out, ev)
+			} else {
+				cov.Skipped++
+			}
 		}
-		return out, cov, err
+
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				return out, cov, nil
+			}
+			return out, cov, err
+		}
 	}
-	return out, cov, nil
+}
+
+func readLine(br *bufio.Reader) (string, bool, error) {
+	var b strings.Builder
+	overlong := false
+	for {
+		chunk, err := br.ReadSlice('\n')
+		if n := len(chunk); n > 0 {
+			if room := maxLine - b.Len(); room > 0 {
+				if n > room {
+					chunk, overlong = chunk[:room], true
+				}
+				b.Write(chunk)
+			} else {
+				overlong = true
+			}
+		}
+		if errors.Is(err, bufio.ErrBufferFull) {
+			continue
+		}
+		return strings.TrimRight(b.String(), "\r\n"), overlong, err
+	}
 }
 
 // Studio writes two line shapes, one with a severity word and one without
