@@ -2,6 +2,7 @@ package rules
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/Vliysl/roblox-studio-doctor/internal/sessionize"
 )
@@ -82,29 +83,39 @@ func crashNoCleanExit(s sessionize.Session) *Finding {
 // Not in the active list. AppMemUsageStatus turned out to be static tiers rather
 // than a memory series, so this can't really fire anyways
 func memoryGrowth(s sessionize.Session) *Finding {
-	if len(s.Memory) < 2 {
-		return nil
-	}
-	first, last := s.Memory[0], s.Memory[0]
+	var series []sessionize.MemSample
 	for _, m := range s.Memory {
-		if m.Bytes > last.Bytes {
-			last = m
+		if m.Slot == 0 {
+			series = append(series, m)
 		}
 	}
-	if last.Bytes < memGrowthFloorBytes {
+	if len(series) < 2 {
 		return nil
 	}
-	if float64(last.Bytes) < float64(first.Bytes)*memGrowthFactor {
+	first, peak := series[0], series[0]
+	for _, m := range series {
+		if m.Bytes > peak.Bytes {
+			peak = m
+		}
+	}
+	if peak.Bytes < memGrowthFloorBytes {
 		return nil
+	}
+	if float64(peak.Bytes) < float64(first.Bytes)*memGrowthFactor {
+		return nil
+	}
+	span := peak.Wall.Sub(first.Wall)
+	if span < 0 {
+		span = 0
 	}
 	return &Finding{
 		Rule:     "memory-growth",
 		Severity: Warn,
 		Summary: fmt.Sprintf("Studio memory went from %.1f GB to %.1f GB over %s",
-			gib(first.Bytes), gib(last.Bytes), s.Duration().Round(1e9)),
+			gib(first.Bytes), gib(peak.Bytes), span.Round(time.Second)),
 		Evidence: []string{
 			fmt.Sprintf("first sample %d bytes at %s", first.Bytes, first.Wall.Format("15:04:05")),
-			fmt.Sprintf("peak sample %d bytes at %s", last.Bytes, last.Wall.Format("15:04:05")),
+			fmt.Sprintf("peak sample %d bytes at %s", peak.Bytes, peak.Wall.Format("15:04:05")),
 		},
 	}
 }

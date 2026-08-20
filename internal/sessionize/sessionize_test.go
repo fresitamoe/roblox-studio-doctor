@@ -58,6 +58,23 @@ func TestBuildMemoryForms(t *testing.T) {
 	}
 }
 
+func TestBuildRecordsMemorySlot(t *testing.T) {
+	in := strings.Join([]string{
+		`2026-07-11T11:41:01.898Z,40316.898438,0024,6,Info [FLog::AppMemUsageStatus] 3616824723`,
+		`2026-07-11T01:19:01.448Z,2996.448975,0180,6,Warning [FLog::AppMemUsageStatus] 3748799858.1044687361`,
+	}, "\n") + "\n"
+	s := build(t, in)
+	want := []int{0, 0, 1}
+	if len(s.Memory) != len(want) {
+		t.Fatalf("got %d samples, want %d", len(s.Memory), len(want))
+	}
+	for i, w := range want {
+		if s.Memory[i].Slot != w {
+			t.Errorf("sample %d slot = %d, want %d", i, s.Memory[i].Slot, w)
+		}
+	}
+}
+
 func TestBuildCleanExit(t *testing.T) {
 	in := strings.Join([]string{
 		`2026-07-11T11:41:01.898Z,1.0,0024,6,Info [FLog::StudioApplicationState] AboutToQuit`,

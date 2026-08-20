@@ -15,6 +15,7 @@ type MemSample struct {
 	Wall  time.Time `json:"wall"`
 	Mono  float64   `json:"mono"`
 	Bytes int64     `json:"bytes"`
+	Slot  int       `json:"slot"`
 }
 
 // Disconnect is one Team Create drop and whether the link was lost
@@ -69,8 +70,9 @@ func Build(f scan.SessionFile, evs []parse.Event, cov parse.Coverage) Session {
 				})
 			}
 		case "AppMemUsageStatus":
-			for _, b := range memBytes(e.Message) {
-				s.Memory = append(s.Memory, MemSample{Wall: e.Wall, Mono: e.Mono, Bytes: b})
+			for slot, b := range memBytes(e.Message) {
+				s.Memory = append(s.Memory,
+					MemSample{Wall: e.Wall, Mono: e.Mono, Bytes: b, Slot: slot})
 			}
 		case "StudioApplicationState":
 			if strings.Contains(e.Message, "LastWindowClosed") {
