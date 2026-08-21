@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 const fixture = `2026-08-05T10:00:00.000Z,1.000000,0128,6,Warning [FLog::TeamCreateManager] Disconnected due to TimeAsleepDisconnectThreshold (17). LostConnection = true
@@ -57,5 +58,40 @@ func TestRunJSONMode(t *testing.T) {
 	}
 	if !strings.Contains(out.String(), `"schema"`) {
 		t.Errorf("not json:\n%s", out.String())
+	}
+}
+
+func TestRunOngoing(t *testing.T) {
+	var out bytes.Buffer
+	if code := run([]string{"-log-dir", writeFixture(t)}, &out, &bytes.Buffer{}); code != 0 {
+		t.Fatalf("exit = %d", code)
+	}
+	got := out.String()
+	if !strings.Contains(got, "[info] crash-no-clean-exit") {
+		t.Errorf("want info:\n%s", got)
+	}
+	if strings.Contains(got, "crashed") {
+		t.Errorf("should not say crash:\n%s", got)
+	}
+}
+
+func TestRunOldLogIsCrash(t *testing.T) {
+	dir := writeFixture(t)
+	old := time.Now().Add(-time.Hour)
+	ents, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, e := range ents {
+		if err := os.Chtimes(filepath.Join(dir, e.Name()), old, old); err != nil {
+			t.Fatal(err)
+		}
+	}
+	var out bytes.Buffer
+	if code := run([]string{"-log-dir", dir}, &out, &bytes.Buffer{}); code != 0 {
+		t.Fatalf("exit = %d", code)
+	}
+	if !strings.Contains(out.String(), "[warn] crash-no-clean-exit") {
+		t.Errorf("want crash:\n%s", out.String())
 	}
 }

@@ -37,6 +37,8 @@ type Session struct {
 	Disconnects   []Disconnect     `json:"disconnects,omitempty"`
 	CleanExit     bool             `json:"clean_exit"`
 	ChannelCounts map[string]int   `json:"channel_counts,omitempty"`
+
+	Ongoing bool `json:"ongoing"`
 }
 
 func (s Session) Duration() time.Duration { return s.End.Sub(s.Start) }

@@ -72,10 +72,18 @@ func crashNoCleanExit(s sessionize.Session) *Finding {
 	if s.CleanExit {
 		return nil
 	}
+	if s.Ongoing {
+		return &Finding{
+			Rule:     "crash-no-clean-exit",
+			Severity: Info,
+			Summary:  "Session is still in progress — Studio has not logged its shutdown sequence yet. Nothing is wrong.",
+			Evidence: []string{"log was still being written, no LastWindowClosed event yet"},
+		}
+	}
 	return &Finding{
 		Rule:     "crash-no-clean-exit",
 		Severity: Warn,
-		Summary:  "Session ended without Studio's shutdown sequence — it crashed, was killed, or is still running.",
+		Summary:  "Session ended without Studio's shutdown sequence — it crashed or was killed.",
 		Evidence: []string{"no LastWindowClosed event in the log"},
 	}
 }

@@ -185,3 +185,34 @@ func TestMemoryGrowthSpan(t *testing.T) {
 		t.Errorf("summary = %q, wrong span", f.Summary)
 	}
 }
+
+func TestCrashInfoWhenOngoing(t *testing.T) {
+	s := sessionize.Session{CleanExit: false, Ongoing: true}
+	f := find(Apply(s), "crash-no-clean-exit")
+	if f == nil {
+		t.Fatal("rule did not fire")
+	}
+	if f.Severity != Info {
+		t.Errorf("severity = %q, want info", f.Severity)
+	}
+	if strings.Contains(f.Summary, "crashed") {
+		t.Errorf("summary = %q, not a crash", f.Summary)
+	}
+	if len(f.Evidence) == 0 {
+		t.Error("finding must cite evidence")
+	}
+}
+
+func TestCrashWarnWhenDone(t *testing.T) {
+	s := sessionize.Session{CleanExit: false, Ongoing: false}
+	f := find(Apply(s), "crash-no-clean-exit")
+	if f == nil {
+		t.Fatal("rule did not fire")
+	}
+	if f.Severity != Warn {
+		t.Errorf("severity = %q, want warn", f.Severity)
+	}
+	if !strings.Contains(f.Summary, "crashed") {
+		t.Errorf("summary = %q, want the crash wording", f.Summary)
+	}
+}

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"time"
 
 	"github.com/Vliysl/roblox-studio-doctor/internal/parse"
 	"github.com/Vliysl/roblox-studio-doctor/internal/paths"
@@ -13,6 +14,8 @@ import (
 	"github.com/Vliysl/roblox-studio-doctor/internal/scan"
 	"github.com/Vliysl/roblox-studio-doctor/internal/sessionize"
 )
+
+const ongoingWindow = 2 * time.Minute
 
 func main() {
 	os.Exit(run(os.Args[1:], os.Stdout, os.Stderr))
@@ -76,6 +79,9 @@ func run(args []string, stdout, stderr io.Writer) int {
 	}
 
 	sess := sessionize.Build(f, evs, cov)
+	if st, err := fh.Stat(); err == nil && time.Since(st.ModTime()) < ongoingWindow {
+		sess.Ongoing = true
+	}
 	res := report.NewResult(sess, rules.Apply(sess))
 	if *asJSON {
 		if err := report.JSON(stdout, res); err != nil {
