@@ -44,7 +44,8 @@ func main() {
 			fmt.Fprintln(os.Stderr, "mkfixtures:", err)
 			continue
 		}
-		name := fmt.Sprintf("session-%02d-%s.log", i, f.Build)
+		name := fmt.Sprintf("%s_%s_Studio_F1%03d_last.log",
+			f.Build, f.Start.UTC().Format("20060102T150405Z"), i)
 		dst := filepath.Join(*out, name)
 		if err := os.WriteFile(dst, []byte(text), 0o644); err != nil {
 			fmt.Fprintln(os.Stderr, "mkfixtures:", err)
