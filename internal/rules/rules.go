@@ -35,7 +35,6 @@ type rule func(sessionize.Session) *Finding
 var all = []rule{
 	teamCreateLostConnection,
 	crashNoCleanExit,
-	memoryGrowth,
 }
 
 // Apply runs every active rule and returns the ones that fired

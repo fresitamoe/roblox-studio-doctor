@@ -128,12 +128,16 @@ func TestFindingsHaveEvidence(t *testing.T) {
 	}
 }
 
-func TestMemoryGrowthSilent(t *testing.T) {
+func TestOnlyActiveRules(t *testing.T) {
+	active := map[string]bool{
+		"teamcreate-lost-connection": true,
+		"crash-no-clean-exit":        true,
+	}
 	for _, a := range analyseAll(t) {
 		name := filepath.Base(a.session.File.Path)
 		for _, f := range a.findings {
-			if f.Rule == "memory-growth" {
-				t.Errorf("%s: memory-growth fired: %+v", name, f)
+			if !active[f.Rule] {
+				t.Errorf("%s: unexpected rule %q in findings", name, f.Rule)
 			}
 		}
 	}

@@ -69,7 +69,7 @@ func TestMemoryGrowthFires(t *testing.T) {
 			{Wall: base.Add(2 * time.Hour), Bytes: 12_000_000_000},
 		},
 	}
-	f := find(Apply(s), "memory-growth")
+	f := memoryGrowth(s)
 	if f == nil {
 		t.Fatal("rule did not fire")
 	}
@@ -128,7 +128,7 @@ func TestMemoryGrowthSlots(t *testing.T) {
 	if len(s.Memory) != 6 {
 		t.Fatalf("got %d samples, want 6", len(s.Memory))
 	}
-	if f := find(Apply(s), "memory-growth"); f != nil {
+	if f := memoryGrowth(s); f != nil {
 		t.Fatalf("fired across slots: %+v", f)
 	}
 }
@@ -139,7 +139,7 @@ func TestMemoryGrowthDottedValues(t *testing.T) {
 		memLine("2026-07-12T17:28:22.828Z", "3748799858.1044687361"),
 		memLine("2026-07-12T17:32:01.391Z", "3784003596.1044687361"),
 	)
-	if f := find(Apply(s), "memory-growth"); f != nil {
+	if f := memoryGrowth(s); f != nil {
 		t.Fatalf("should not fire: %+v", f)
 	}
 }
@@ -150,7 +150,7 @@ func TestMemoryGrowthSlot0(t *testing.T) {
 		memLine("2026-07-12T17:30:00.000Z", "4000000000.1044687361"),
 		memLine("2026-07-12T18:00:00.000Z", "9000000000.1044687361"),
 	)
-	f := find(Apply(s), "memory-growth")
+	f := memoryGrowth(s)
 	if f == nil {
 		t.Fatal("real growth in slot 0 must still fire")
 	}
@@ -174,7 +174,7 @@ func TestMemoryGrowthSpan(t *testing.T) {
 			{Wall: base.Add(time.Hour + 4*time.Minute), Bytes: 9_000_000_000, Slot: 0},
 		},
 	}
-	f := find(Apply(s), "memory-growth")
+	f := memoryGrowth(s)
 	if f == nil {
 		t.Fatal("rule did not fire")
 	}
@@ -214,5 +214,49 @@ func TestCrashWarnWhenDone(t *testing.T) {
 	}
 	if !strings.Contains(f.Summary, "crashed") {
 		t.Errorf("summary = %q, want the crash wording", f.Summary)
+	}
+}
+
+func TestMemoryGrowthIsDormant(t *testing.T) {
+	base := time.Date(2026, 8, 3, 17, 0, 0, 0, time.UTC)
+	s := sessionize.Session{
+		CleanExit: true,
+		Start:     base,
+		End:       base.Add(time.Hour),
+		Memory: []sessionize.MemSample{
+			{Wall: base, Bytes: 2_000_000_000, Slot: 0},
+			{Wall: base.Add(time.Hour), Bytes: 9_000_000_000, Slot: 0},
+		},
+	}
+	if memoryGrowth(s) == nil {
+		t.Fatal("setup is wrong, rule should fire")
+	}
+	if f := find(Apply(s), "memory-growth"); f != nil {
+		t.Errorf("memory-growth should be off: %+v", f)
+	}
+	if got := Apply(s); len(got) != 0 {
+		t.Errorf("healthy session produced %+v", got)
+	}
+}
+
+func TestActiveRuleCount(t *testing.T) {
+	if len(all) != 2 {
+		t.Fatalf("active rule set has %d rules, want 2", len(all))
+	}
+	s := sessionize.Session{
+		CleanExit:   false,
+		Disconnects: []sessionize.Disconnect{{Reason: "X", Code: 1, LostConnection: true}},
+	}
+	got := map[string]bool{}
+	for _, f := range Apply(s) {
+		got[f.Rule] = true
+	}
+	for _, want := range []string{"teamcreate-lost-connection", "crash-no-clean-exit"} {
+		if !got[want] {
+			t.Errorf("rule %q did not fire", want)
+		}
+	}
+	if len(got) != 2 {
+		t.Errorf("unexpected active rules: %v", got)
 	}
 }
