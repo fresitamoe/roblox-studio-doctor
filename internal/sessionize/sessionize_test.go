@@ -3,6 +3,7 @@ package sessionize
 import (
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/Vliysl/roblox-studio-doctor/internal/parse"
 	"github.com/Vliysl/roblox-studio-doctor/internal/scan"
@@ -90,4 +91,123 @@ func TestBuildCrashHasNoCleanExit(t *testing.T) {
 	if s := build(t, in); s.CleanExit {
 		t.Error("want CleanExit false")
 	}
+}
+
+func errLine(ts, payload string) string {
+	return ts + `,1.0,0118,6,Error [FLog::CreatorError] ` + payload
+}
+
+func TestBuildDedupesScriptErrors(t *testing.T) {
+	in := strings.Join([]string{
+		errLine("2026-07-11T11:41:01.898Z", `Error: ReplicatedStorage.ArtOfWar.Modules.ArmyView:1318: attempt to index nil with 'reduced'`),
+		errLine("2026-07-11T11:41:02.898Z", `Error: ReplicatedStorage.ArtOfWar.Modules.Other:12: boom`),
+		errLine("2026-07-11T11:41:03.898Z", `Error: ReplicatedStorage.ArtOfWar.Modules.ArmyView:1318: attempt to index nil with 'reduced'`),
+		errLine("2026-07-11T11:41:04.898Z", `Error: ReplicatedStorage.ArtOfWar.Modules.ArmyView:1318: attempt to index nil with 'reduced'`),
+	}, "\n") + "\n"
+	s := build(t, in)
+	if len(s.ScriptErrors) != 2 {
+		t.Fatalf("got %d distinct errors, want 2: %+v", len(s.ScriptErrors), s.ScriptErrors)
+	}
+	top := s.ScriptErrors[0]
+	if top.Count != 3 {
+		t.Errorf("top count = %d, want 3", top.Count)
+	}
+	if top.Path != "ReplicatedStorage.ArtOfWar.Modules.ArmyView" || top.Line != 1318 {
+		t.Errorf("path/line = %q:%d", top.Path, top.Line)
+	}
+	if top.Message != "attempt to index nil with 'reduced'" {
+		t.Errorf("message = %q", top.Message)
+	}
+	if !top.FirstWall.Equal(mustTime(t, "2026-07-11T11:41:01.898Z")) {
+		t.Errorf("first wall = %v", top.FirstWall)
+	}
+	if !top.LastWall.Equal(mustTime(t, "2026-07-11T11:41:04.898Z")) {
+		t.Errorf("last wall = %v", top.LastWall)
+	}
+	if s.ScriptErrors[1].Count != 1 {
+		t.Errorf("second entry count = %d, want 1", s.ScriptErrors[1].Count)
+	}
+}
+
+func TestBuildErrorNoPath(t *testing.T) {
+	in := errLine("2026-07-11T11:41:01.898Z", `Error: Unable to load plugin icon: rbxassetid://11058574694`) + "\n"
+	s := build(t, in)
+	if len(s.ScriptErrors) != 1 {
+		t.Fatalf("got %d errors, want 1", len(s.ScriptErrors))
+	}
+	e := s.ScriptErrors[0]
+	if e.Path != "" || e.Line != 0 {
+		t.Errorf("want no path/line, got %q:%d", e.Path, e.Line)
+	}
+	if e.Message != "Unable to load plugin icon: rbxassetid://11058574694" {
+		t.Errorf("message = %q", e.Message)
+	}
+}
+
+func TestBuildCountsScriptWarnings(t *testing.T) {
+
+	in := strings.Join([]string{
+		`2026-07-11T11:41:01.898Z,1.0,0118,6,Warning [FLog::CreatorWarning] Warning: Infinite yield possible on 'Players.X:WaitForChild("Y")'`,
+		`2026-07-11T11:41:02.898Z,2.0,0118,6,Warning [FLog::CreatorWarning] Warning: something else entirely`,
+	}, "\n") + "\n"
+	s := build(t, in)
+	if s.ScriptWarningCount != 2 {
+		t.Errorf("warning count = %d, want 2", s.ScriptWarningCount)
+	}
+}
+
+func TestBuildAssetNoise(t *testing.T) {
+	asset := func(ts, payload string) string {
+		return ts + `,1.0,0024,6,Info [FLog::AssetAccessDataModelObserver] ` + payload
+	}
+	in := strings.Join([]string{
+		asset("2026-07-11T11:41:01.898Z", "Connected to ContentProvider assetFetchFailedNoExperienceAccess signal"),
+		asset("2026-07-11T11:41:02.898Z", "Entering message receiver"),
+		asset("2026-07-11T11:41:03.898Z", "Received assetFetchFailedNoExperienceAccess signal for asset ID 1239927101, expected type Animation"),
+		asset("2026-07-11T11:41:04.898Z", "Exiting message receiver"),
+		asset("2026-07-11T11:41:05.898Z", "Received assetFetchFailedNoExperienceAccess signal for asset ID 1239927101, expected type Animation"),
+		asset("2026-07-11T11:41:06.898Z", "Received assetFetchFailedNoExperienceAccess signal for asset ID 92114724928102, expected type Model"),
+	}, "\n") + "\n"
+	s := build(t, in)
+	if len(s.AssetAccessFailures) != 2 {
+		t.Fatalf("got %d failures, want 2: %+v", len(s.AssetAccessFailures), s.AssetAccessFailures)
+	}
+	first := s.AssetAccessFailures[0]
+	if first.AssetID != "1239927101" || first.AssetType != "Animation" || first.Count != 2 {
+		t.Errorf("first = %+v, want count 2", first)
+	}
+	if s.AssetAccessFailures[1].AssetID != "92114724928102" {
+		t.Errorf("second = %+v", s.AssetAccessFailures[1])
+	}
+}
+
+func TestBuildPlaytestTimes(t *testing.T) {
+
+	in := strings.Join([]string{
+		`2026-07-13T00:17:14.813Z,583.813599,0024,6 [FLog::StudioTimingLog] ======== Studio Play Testing Times =======`,
+		`2026-07-13T00:17:15.813Z,584.813599,0024,6 [FLog::StudioTimingLog] PlaySoloStartTotalTime     : 8.6300 sec`,
+		`2026-07-13T00:27:15.813Z,1184.813599,0024,6 [FLog::StudioTimingLog] PlaySoloStartTotalTime     : 3.1934 sec`,
+	}, "\n") + "\n"
+	s := build(t, in)
+	if len(s.Playtests) != 2 {
+		t.Fatalf("got %d playtests, want 2: %+v", len(s.Playtests), s.Playtests)
+	}
+	if s.Playtests[0].LoadSeconds != 8.63 {
+		t.Errorf("first load = %v, want 8.63", s.Playtests[0].LoadSeconds)
+	}
+	if s.Playtests[1].LoadSeconds != 3.1934 {
+		t.Errorf("second load = %v, want 3.1934", s.Playtests[1].LoadSeconds)
+	}
+	if !s.Playtests[0].Wall.Equal(mustTime(t, "2026-07-13T00:17:15.813Z")) {
+		t.Errorf("first wall = %v", s.Playtests[0].Wall)
+	}
+}
+
+func mustTime(t *testing.T, s string) time.Time {
+	t.Helper()
+	w, err := time.Parse("2006-01-02T15:04:05.999Z", s)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return w.UTC()
 }
