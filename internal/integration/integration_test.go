@@ -132,6 +132,9 @@ func TestOnlyActiveRules(t *testing.T) {
 	active := map[string]bool{
 		"teamcreate-lost-connection": true,
 		"crash-no-clean-exit":        true,
+		"script-errors":              true,
+		"asset-access-denied":        true,
+		"playtest-slowdown":          true,
 	}
 	for _, a := range analyseAll(t) {
 		name := filepath.Base(a.session.File.Path)
@@ -139,6 +142,23 @@ func TestOnlyActiveRules(t *testing.T) {
 			if !active[f.Rule] {
 				t.Errorf("%s: unexpected rule %q in findings", name, f.Rule)
 			}
+		}
+	}
+}
+func TestFixturesAllowlistOnly(t *testing.T) {
+	for _, a := range analyseAll(t) {
+		name := filepath.Base(a.session.File.Path)
+		if n := len(a.session.ScriptErrors); n != 0 {
+			t.Errorf("%s: %d script error(s) leaked", name, n)
+		}
+		if a.session.ScriptWarningCount != 0 {
+			t.Errorf("%s: script warnings leaked", name)
+		}
+		if n := len(a.session.AssetAccessFailures); n != 0 {
+			t.Errorf("%s: %d asset failure(s) leaked", name, n)
+		}
+		if n := len(a.session.Playtests); n != 0 {
+			t.Errorf("%s: %d playtest(s) leaked", name, n)
 		}
 	}
 }

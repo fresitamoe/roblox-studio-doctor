@@ -2,6 +2,7 @@ package rules
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/Vliysl/roblox-studio-doctor/internal/sessionize"
@@ -28,6 +29,14 @@ var (
 	memGrowthFactor = 2.0
 
 	memGrowthFloorBytes int64 = 2 << 30
+
+	playtestSlowdownFactor       = 2.5
+	playtestSlowdownFloorSeconds = 10.0
+
+	scriptErrorEvidenceLimit = 5
+	scriptErrorMessageChars  = 120
+
+	assetFailureEvidenceLimit = 5
 )
 
 type rule func(sessionize.Session) *Finding
@@ -35,6 +44,9 @@ type rule func(sessionize.Session) *Finding
 var all = []rule{
 	teamCreateLostConnection,
 	crashNoCleanExit,
+	scriptErrors,
+	assetAccessDenied,
+	playtestSlowdown,
 }
 
 // Apply runs every active rule and returns the ones that fired
@@ -84,6 +96,99 @@ func crashNoCleanExit(s sessionize.Session) *Finding {
 		Severity: Warn,
 		Summary:  "No shutdown sequence in the log, so it crashed or got killed",
 		Evidence: []string{"no LastWindowClosed event in the log"},
+	}
+}
+
+func scriptErrors(s sessionize.Session) *Finding {
+	if len(s.ScriptErrors) == 0 {
+		return nil
+	}
+	total := 0
+	for _, e := range s.ScriptErrors {
+		total += e.Count
+	}
+
+	ev := make([]string, 0, scriptErrorEvidenceLimit)
+	for _, e := range s.ScriptErrors {
+		if len(ev) == scriptErrorEvidenceLimit {
+			break
+		}
+		ev = append(ev, fmt.Sprintf("%dx %s%s",
+			e.Count, location(e), truncate(e.Message, scriptErrorMessageChars)))
+	}
+	return &Finding{
+		Rule:     "script-errors",
+		Severity: Warn,
+		Summary: fmt.Sprintf("Scripts logged %d error(s) from %d distinct problem(s).",
+			total, len(s.ScriptErrors)),
+		Evidence: ev,
+	}
+}
+
+func location(e sessionize.ScriptError) string {
+	if e.Path == "" {
+		return ""
+	}
+	return fmt.Sprintf("%s:%d: ", e.Path, e.Line)
+}
+
+func truncate(s string, n int) string {
+	r := []rune(s)
+	if len(r) <= n {
+		return s
+	}
+	return strings.TrimRight(string(r[:n]), " ") + "..."
+}
+
+func assetAccessDenied(s sessionize.Session) *Finding {
+	if len(s.AssetAccessFailures) == 0 {
+		return nil
+	}
+	ev := make([]string, 0, assetFailureEvidenceLimit)
+	for _, a := range s.AssetAccessFailures {
+		if len(ev) == assetFailureEvidenceLimit {
+			break
+		}
+		ev = append(ev, fmt.Sprintf("asset %s (%s), %d attempt(s)",
+			a.AssetID, a.AssetType, a.Count))
+	}
+	return &Finding{
+		Rule:     "asset-access-denied",
+		Severity: Warn,
+		Summary: fmt.Sprintf("%d asset(s) this session had no access to",
+			len(s.AssetAccessFailures)),
+		Evidence: ev,
+	}
+}
+
+func playtestSlowdown(s sessionize.Session) *Finding {
+	if len(s.Playtests) < 2 {
+		return nil
+	}
+	first, slowest := s.Playtests[0], s.Playtests[0]
+	for _, p := range s.Playtests {
+		if p.LoadSeconds > slowest.LoadSeconds {
+			slowest = p
+		}
+	}
+	if slowest.LoadSeconds < playtestSlowdownFloorSeconds {
+		return nil
+	}
+	if first.LoadSeconds <= 0 ||
+		slowest.LoadSeconds < first.LoadSeconds*playtestSlowdownFactor {
+		return nil
+	}
+	return &Finding{
+		Rule:     "playtest-slowdown",
+		Severity: Warn,
+		Summary: fmt.Sprintf("Playtest loads got slower, %.1fs up from %.1fs across %d playtest(s)",
+			slowest.LoadSeconds, first.LoadSeconds, len(s.Playtests)),
+		Evidence: []string{
+			fmt.Sprintf("first playtest loaded in %.4f sec at %s",
+				first.LoadSeconds, first.Wall.Format("15:04:05")),
+			fmt.Sprintf("slowest playtest loaded in %.4f sec at %s",
+				slowest.LoadSeconds, slowest.Wall.Format("15:04:05")),
+		},
 	}
 }
 

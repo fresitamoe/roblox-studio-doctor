@@ -240,23 +240,190 @@ func TestMemoryGrowthIsDormant(t *testing.T) {
 }
 
 func TestActiveRuleCount(t *testing.T) {
-	if len(all) != 2 {
-		t.Fatalf("active rule set has %d rules, want 2", len(all))
+	if len(all) != 5 {
+		t.Fatalf("active rule set has %d rules, want 5", len(all))
 	}
 	s := sessionize.Session{
-		CleanExit:   false,
-		Disconnects: []sessionize.Disconnect{{Reason: "X", Code: 1, LostConnection: true}},
+		CleanExit:           false,
+		Disconnects:         []sessionize.Disconnect{{Reason: "X", Code: 1, LostConnection: true}},
+		ScriptErrors:        []sessionize.ScriptError{{Path: "A", Line: 1, Message: "boom", Count: 2}},
+		AssetAccessFailures: []sessionize.AssetAccessFailure{{AssetID: "1", AssetType: "Animation", Count: 1}},
+		Playtests:           playtests(5.0, 20.0),
 	}
 	got := map[string]bool{}
 	for _, f := range Apply(s) {
 		got[f.Rule] = true
 	}
-	for _, want := range []string{"teamcreate-lost-connection", "crash-no-clean-exit"} {
+	for _, want := range []string{
+		"teamcreate-lost-connection",
+		"crash-no-clean-exit",
+		"script-errors",
+		"asset-access-denied",
+		"playtest-slowdown",
+	} {
 		if !got[want] {
 			t.Errorf("rule %q did not fire", want)
 		}
 	}
-	if len(got) != 2 {
+	if len(got) != 5 {
 		t.Errorf("unexpected active rules: %v", got)
+	}
+}
+
+func TestScriptErrorsTotals(t *testing.T) {
+	s := sessionize.Session{
+		CleanExit: true,
+		ScriptErrors: []sessionize.ScriptError{
+			{Path: "ReplicatedStorage.ArmyView", Line: 1318, Message: "attempt to index nil with 'reduced'", Count: 62_000},
+			{Path: "ServerScriptService.Combat", Line: 42, Message: "attempt to call a nil value", Count: 684},
+		},
+	}
+	f := find(Apply(s), "script-errors")
+	if f == nil {
+		t.Fatal("rule did not fire")
+	}
+	if f.Severity != Warn {
+		t.Errorf("severity = %q, want warn", f.Severity)
+	}
+	if !strings.Contains(f.Summary, "62684") || !strings.Contains(f.Summary, "2 distinct") {
+		t.Errorf("summary = %q", f.Summary)
+	}
+	if len(f.Evidence) == 0 {
+		t.Fatal("finding must cite evidence")
+	}
+	if !strings.Contains(f.Evidence[0], "62000x") ||
+		!strings.Contains(f.Evidence[0], "ReplicatedStorage.ArmyView:1318") {
+		t.Errorf("evidence[0] = %q", f.Evidence[0])
+	}
+}
+
+func TestScriptErrorsEvidenceCap(t *testing.T) {
+	var errs []sessionize.ScriptError
+	for i := 0; i < 12; i++ {
+		errs = append(errs, sessionize.ScriptError{
+			Path:    "ServerScriptService.Script",
+			Line:    i,
+			Message: strings.Repeat("very long error text ", 40),
+			Count:   20 - i,
+		})
+	}
+	f := find(Apply(sessionize.Session{CleanExit: true, ScriptErrors: errs}), "script-errors")
+	if f == nil {
+		t.Fatal("rule did not fire")
+	}
+	if len(f.Evidence) != scriptErrorEvidenceLimit {
+		t.Errorf("cited %d errors, want the top %d", len(f.Evidence), scriptErrorEvidenceLimit)
+	}
+	for i, e := range f.Evidence {
+		if len(e) > 2*scriptErrorMessageChars {
+			t.Errorf("evidence[%d] is %d chars", i, len(e))
+		}
+	}
+}
+
+func TestAssetAccessDeniedFires(t *testing.T) {
+	s := sessionize.Session{
+		CleanExit: true,
+		AssetAccessFailures: []sessionize.AssetAccessFailure{
+			{AssetID: "1239927101", AssetType: "Animation", Count: 39},
+			{AssetID: "92114724928102", AssetType: "Model", Count: 35},
+		},
+	}
+	f := find(Apply(s), "asset-access-denied")
+	if f == nil {
+		t.Fatal("rule did not fire")
+	}
+	if f.Severity != Warn {
+		t.Errorf("severity = %q, want warn", f.Severity)
+	}
+	if !strings.Contains(f.Summary, "2 asset") {
+		t.Errorf("summary = %q", f.Summary)
+	}
+	if len(f.Evidence) != 2 {
+		t.Fatalf("evidence = %v", f.Evidence)
+	}
+	if !strings.Contains(f.Evidence[0], "1239927101") ||
+		!strings.Contains(f.Evidence[0], "Animation") ||
+		!strings.Contains(f.Evidence[0], "39") {
+		t.Errorf("evidence[0] = %q", f.Evidence[0])
+	}
+}
+
+func playtests(secs ...float64) []sessionize.Playtest {
+	base := time.Date(2026, 8, 3, 17, 0, 0, 0, time.UTC)
+	var out []sessionize.Playtest
+	for i, s := range secs {
+		out = append(out, sessionize.Playtest{
+			Wall:        base.Add(time.Duration(i) * 10 * time.Minute),
+			LoadSeconds: s,
+		})
+	}
+	return out
+}
+
+func TestPlaytestNormalRange(t *testing.T) {
+	s := sessionize.Session{CleanExit: true, Playtests: playtests(8.6, 10.4, 12.2)}
+	if f := find(Apply(s), "playtest-slowdown"); f != nil {
+		t.Fatalf("should not fire: %+v", f)
+	}
+}
+
+func TestPlaytestSlowdownFires(t *testing.T) {
+	s := sessionize.Session{CleanExit: true, Playtests: playtests(5.0, 9.0, 15.0)}
+	f := find(Apply(s), "playtest-slowdown")
+	if f == nil {
+		t.Fatal("rule did not fire on a 3x rise to 15s")
+	}
+	if f.Severity != Warn {
+		t.Errorf("severity = %q, want warn", f.Severity)
+	}
+	if len(f.Evidence) == 0 {
+		t.Error("finding must cite evidence")
+	}
+}
+
+func TestPlaytestFloor(t *testing.T) {
+	s := sessionize.Session{CleanExit: true, Playtests: playtests(1.0, 3.0)}
+	if f := find(Apply(s), "playtest-slowdown"); f != nil {
+		t.Fatalf("should not fire: %+v", f)
+	}
+}
+
+func TestPlaytestNeedsTwo(t *testing.T) {
+	s := sessionize.Session{CleanExit: true, Playtests: playtests(30.0)}
+	if f := find(Apply(s), "playtest-slowdown"); f != nil {
+		t.Fatalf("one playtest is not a trend: %+v", f)
+	}
+}
+
+func TestEveryNewRuleCitesEvidence(t *testing.T) {
+	s := sessionize.Session{
+		CleanExit:           true,
+		ScriptErrors:        []sessionize.ScriptError{{Path: "A", Line: 1, Message: "boom", Count: 3}},
+		AssetAccessFailures: []sessionize.AssetAccessFailure{{AssetID: "1", AssetType: "Animation", Count: 2}},
+		Playtests:           playtests(5.0, 20.0),
+	}
+	fired := map[string]bool{}
+	for _, f := range Apply(s) {
+		fired[f.Rule] = true
+		if len(f.Evidence) == 0 {
+			t.Errorf("finding %q has no evidence", f.Rule)
+		}
+	}
+	for _, want := range []string{"script-errors", "asset-access-denied", "playtest-slowdown"} {
+		if !fired[want] {
+			t.Errorf("rule %q did not fire", want)
+		}
+	}
+}
+
+func TestHealthyWithPlaytests(t *testing.T) {
+	s := sessionize.Session{
+		CleanExit:          true,
+		ScriptWarningCount: 12,
+		Playtests:          playtests(1.9, 2.4, 3.2),
+	}
+	if got := Apply(s); len(got) != 0 {
+		t.Fatalf("healthy session produced %+v", got)
 	}
 }
