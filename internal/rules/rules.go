@@ -103,26 +103,44 @@ func scriptErrors(s sessionize.Session) *Finding {
 	if len(s.ScriptErrors) == 0 {
 		return nil
 	}
-	total := 0
+	total, placeTotal, placeDistinct := 0, 0, 0
 	for _, e := range s.ScriptErrors {
 		total += e.Count
+		if e.Origin == sessionize.OriginPlace {
+			placeTotal += e.Count
+			placeDistinct++
+		}
 	}
-
 	ev := make([]string, 0, scriptErrorEvidenceLimit)
 	for _, e := range s.ScriptErrors {
 		if len(ev) == scriptErrorEvidenceLimit {
 			break
 		}
-		ev = append(ev, fmt.Sprintf("%dx %s%s",
-			e.Count, location(e), truncate(e.Message, scriptErrorMessageChars)))
+		ev = append(ev, fmt.Sprintf("%dx %s%s%s",
+			e.Count, originTag(e.Origin), location(e),
+			truncate(e.Message, scriptErrorMessageChars)))
+	}
+
+	severity, ownership := Info, "none of them in your own scripts"
+	if placeDistinct > 0 {
+		severity = Warn
+		ownership = fmt.Sprintf("%d error(s) from %d of those, in your own scripts",
+			placeTotal, placeDistinct)
 	}
 	return &Finding{
 		Rule:     "script-errors",
-		Severity: Warn,
-		Summary: fmt.Sprintf("Scripts logged %d error(s) from %d distinct problem(s).",
-			total, len(s.ScriptErrors)),
+		Severity: severity,
+		Summary: fmt.Sprintf("%d error(s) from %d distinct problem(s), %s",
+			total, len(s.ScriptErrors), ownership),
 		Evidence: ev,
 	}
+}
+
+func originTag(o sessionize.Origin) string {
+	if o == sessionize.OriginPlace {
+		return ""
+	}
+	return fmt.Sprintf("[%s] ", o)
 }
 
 func location(e sessionize.ScriptError) string {

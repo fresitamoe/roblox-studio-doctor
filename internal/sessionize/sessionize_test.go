@@ -1,6 +1,7 @@
 package sessionize
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 	"time"
@@ -210,4 +211,65 @@ func mustTime(t *testing.T, s string) time.Time {
 		t.Fatal(err)
 	}
 	return w.UTC()
+}
+
+func TestBuildRanksOwnErrors(t *testing.T) {
+	var lines []string
+	add := func(n int, payload string) {
+		for i := 0; i < n; i++ {
+			lines = append(lines, errLine("2026-07-11T11:41:01.898Z", payload))
+		}
+	}
+	add(9, `Error: Not running script because past shutdown deadline`)
+	add(2, `Error: ReplicatedStorage.ArtOfWar.Modules.ArmyView:1318: attempt to index nil with 'reduced'`)
+	add(5, `Error: cloud_6230964447.AlignmentPlusPlus.Main:44: bad argument`)
+	add(7, `Error: CorePackages.Workspace.Packages._Workspace.Chrome.Chrome:7: nope`)
+	s := build(t, strings.Join(lines, "\n")+"\n")
+
+	if len(s.ScriptErrors) != 4 {
+		t.Fatalf("got %d distinct errors, want 4: %+v", len(s.ScriptErrors), s.ScriptErrors)
+	}
+	wantOrigins := []Origin{OriginPlace, OriginUnknown, OriginPlugin, OriginEngine}
+	for i, want := range wantOrigins {
+		if got := s.ScriptErrors[i].Origin; got != want {
+			t.Errorf("Origin = %v, want %v", got, want)
+		}
+	}
+	if top := s.ScriptErrors[0]; top.Count != 2 {
+		t.Errorf("top count = %d, want 2", top.Count)
+	}
+}
+
+func TestOriginByPathRoot(t *testing.T) {
+	cases := []struct {
+		path string
+		want Origin
+	}{
+		{"ReplicatedStorage.ArtOfWar.Modules.ArmyView", OriginPlace},
+		{"ServerScriptService.Combat", OriginPlace},
+		{"StarterPlayer.StarterPlayerScripts.Client", OriginPlace},
+		{"Workspace", OriginPlace},
+		{"cloud_6230964447.AlignmentPlusPlus.Main", OriginPlugin},
+		{"cloud_123", OriginPlugin},
+		{"CorePackages.Workspace.Packages._Workspace.Chrome", OriginEngine},
+		{"RobloxGui.Modules.Something", OriginEngine},
+		{"", OriginUnknown},
+		{"cloud_notanid.Thing", OriginUnknown},
+		{"SomethingNobodyHasSeen.Script", OriginUnknown},
+	}
+	for _, c := range cases {
+		if got := originOf(c.path); got != c.want {
+			t.Errorf("originOf(%q) = %v, want %v", c.path, got, c.want)
+		}
+	}
+}
+
+func TestOriginMarshalsAsAName(t *testing.T) {
+	b, err := json.Marshal(ScriptError{Path: "CoreGui.X", Origin: OriginEngine})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(b), `"origin":"engine"`) {
+		t.Errorf("origin must serialise as its name: %s", b)
+	}
 }

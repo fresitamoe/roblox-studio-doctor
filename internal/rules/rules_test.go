@@ -427,3 +427,62 @@ func TestHealthyWithPlaytests(t *testing.T) {
 		t.Fatalf("healthy session produced %+v", got)
 	}
 }
+
+func TestScriptErrorsWarnsOnOwnCode(t *testing.T) {
+	s := sessionize.Session{
+		CleanExit: true,
+		ScriptErrors: []sessionize.ScriptError{
+			{Path: "ReplicatedStorage.ArmyView", Line: 1318, Message: "attempt to index nil", Count: 2, Origin: sessionize.OriginPlace},
+			{Message: "Not running script because past shutdown deadline", Count: 4976, Origin: sessionize.OriginUnknown},
+			{Path: "cloud_6230964447.Align", Line: 44, Message: "bad argument", Count: 5, Origin: sessionize.OriginPlugin},
+		},
+	}
+	f := find(Apply(s), "script-errors")
+	if f == nil {
+		t.Fatal("rule did not fire")
+	}
+	if f.Severity != Warn {
+		t.Errorf("severity = %q, want warn", f.Severity)
+	}
+	if !strings.Contains(f.Summary, "your own scripts") {
+		t.Errorf("summary = %q", f.Summary)
+	}
+	if len(f.Evidence) < 3 {
+		t.Fatalf("want the top three cited, got %v", f.Evidence)
+	}
+	if !strings.Contains(f.Evidence[0], "ReplicatedStorage.ArmyView") {
+		t.Errorf("evidence = %q", f.Evidence[0])
+	}
+	if strings.Contains(f.Evidence[0], "[") {
+		t.Errorf("place errors carry no origin tag: %q", f.Evidence[0])
+	}
+	if !strings.Contains(f.Evidence[1], "[unknown]") {
+		t.Errorf("evidence[1] must name its origin: %q", f.Evidence[1])
+	}
+	if !strings.Contains(f.Evidence[2], "[plugin]") {
+		t.Errorf("evidence[2] must name its origin: %q", f.Evidence[2])
+	}
+}
+
+func TestScriptErrorsInfoOnly(t *testing.T) {
+	s := sessionize.Session{
+		CleanExit: true,
+		ScriptErrors: []sessionize.ScriptError{
+			{Message: "Not running script because past shutdown deadline", Count: 4976, Origin: sessionize.OriginUnknown},
+			{Path: "CorePackages.Chrome", Line: 7, Message: "nope", Count: 1, Origin: sessionize.OriginEngine},
+		},
+	}
+	f := find(Apply(s), "script-errors")
+	if f == nil {
+		t.Fatal("rule should still fire")
+	}
+	if f.Severity != Info {
+		t.Errorf("severity = %q, want info", f.Severity)
+	}
+	if !strings.Contains(f.Summary, "none of them in your own scripts") {
+		t.Errorf("summary = %q", f.Summary)
+	}
+	if len(f.Evidence) == 0 {
+		t.Error("finding must cite evidence")
+	}
+}

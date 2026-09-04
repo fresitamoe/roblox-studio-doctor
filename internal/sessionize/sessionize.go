@@ -28,12 +28,81 @@ type Disconnect struct {
 	LineNo         int       `json:"line_no"`
 }
 
+// Origin is whose code an error came from
+type Origin int
+
+const (
+	OriginPlace Origin = iota
+	OriginUnknown
+	OriginPlugin
+	OriginEngine
+)
+
+// String names an Origin for output
+func (o Origin) String() string {
+	switch o {
+	case OriginPlace:
+		return "place"
+	case OriginPlugin:
+		return "plugin"
+	case OriginEngine:
+		return "engine"
+	default:
+		return "unknown"
+	}
+}
+
+// MarshalJSON writes the name rather than the number
+func (o Origin) MarshalJSON() ([]byte, error) {
+	return []byte(strconv.Quote(o.String())), nil
+}
+
+var originByRoot = map[string]Origin{
+	"ReplicatedStorage":       OriginPlace,
+	"ReplicatedFirst":         OriginPlace,
+	"ServerScriptService":     OriginPlace,
+	"ServerStorage":           OriginPlace,
+	"Workspace":               OriginPlace,
+	"StarterGui":              OriginPlace,
+	"StarterPack":             OriginPlace,
+	"StarterPlayer":           OriginPlace,
+	"Lighting":                OriginPlace,
+	"SoundService":            OriginPlace,
+	"Players":                 OriginPlace,
+	"Teams":                   OriginPlace,
+	"CorePackages":            OriginEngine,
+	"CoreGui":                 OriginEngine,
+	"RobloxGui":               OriginEngine,
+	"RobloxReplicatedStorage": OriginEngine,
+}
+
+var pluginRootRe = regexp.MustCompile(`^cloud_\d+$`)
+
+// Order is very important. Place sorts first so your own bugs show above Roblox's own noise
+func originOf(path string) Origin {
+	if path == "" {
+		return OriginUnknown
+	}
+	root := path
+	if i := strings.IndexByte(root, '.'); i >= 0 {
+		root = root[:i]
+	}
+	if o, ok := originByRoot[root]; ok {
+		return o
+	}
+	if pluginRootRe.MatchString(root) {
+		return OriginPlugin
+	}
+	return OriginUnknown
+}
+
 // ScriptError is one distinct error and how often it came up
 type ScriptError struct {
 	Path      string    `json:"path,omitempty"`
 	Line      int       `json:"line,omitempty"`
 	Message   string    `json:"message"`
 	Count     int       `json:"count"`
+	Origin    Origin    `json:"origin"`
 	FirstWall time.Time `json:"first_wall"`
 	LastWall  time.Time `json:"last_wall"`
 }
@@ -138,6 +207,7 @@ func Build(f scan.SessionFile, evs []parse.Event, cov parse.Coverage) Session {
 			if !seen {
 				cur = &ScriptError{
 					Path: k.path, Line: k.line, Message: k.message,
+					Origin:    originOf(k.path),
 					FirstWall: e.Wall,
 				}
 				errIndex[k] = cur
@@ -173,6 +243,9 @@ func Build(f scan.SessionFile, evs []parse.Event, cov parse.Coverage) Session {
 	}
 	sort.SliceStable(s.ScriptErrors, func(i, j int) bool {
 		a, b := s.ScriptErrors[i], s.ScriptErrors[j]
+		if a.Origin != b.Origin {
+			return a.Origin < b.Origin
+		}
 		if a.Count != b.Count {
 			return a.Count > b.Count
 		}
