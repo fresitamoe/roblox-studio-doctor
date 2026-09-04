@@ -51,6 +51,17 @@ func Text(w io.Writer, r Result) error {
 		fmt.Fprintf(w, "Session   %s  (%s)\n",
 			s.Start.Format("2006-01-02 15:04:05"), s.Duration().Round(1e9))
 	}
+	if len(s.Playtests) > 0 {
+		fast, slow := loadRange(s.Playtests)
+		fmt.Fprintf(w, "Playtests %d  (fastest %.1fs, slowest %.1fs)\n",
+			len(s.Playtests), fast, slow)
+	}
+	if total, distinct := errorTotals(s); total > 0 {
+		fmt.Fprintf(w, "Errors    %d script error(s), %d distinct\n", total, distinct)
+	}
+	if s.ScriptWarningCount > 0 {
+		fmt.Fprintf(w, "Warnings  %d script warning(s)\n", s.ScriptWarningCount)
+	}
 	fmt.Fprintf(w, "Coverage  %d/%d lines understood (%.1f%%)\n",
 		s.Coverage.Parsed, s.Coverage.Total, s.Coverage.Ratio()*100)
 	fmt.Fprintln(w)
@@ -82,4 +93,24 @@ func orDash(s string) string {
 		return "-"
 	}
 	return s
+}
+
+func errorTotals(s sessionize.Session) (total, distinct int) {
+	for _, e := range s.ScriptErrors {
+		total += e.Count
+	}
+	return total, len(s.ScriptErrors)
+}
+
+func loadRange(ps []sessionize.Playtest) (fastest, slowest float64) {
+	fastest, slowest = ps[0].LoadSeconds, ps[0].LoadSeconds
+	for _, p := range ps {
+		if p.LoadSeconds < fastest {
+			fastest = p.LoadSeconds
+		}
+		if p.LoadSeconds > slowest {
+			slowest = p.LoadSeconds
+		}
+	}
+	return fastest, slowest
 }

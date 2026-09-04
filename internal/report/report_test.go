@@ -61,3 +61,44 @@ func TestJSONCarriesSchemaField(t *testing.T) {
 		t.Errorf("schema field missing: %v", m)
 	}
 }
+
+func TestTextSessionHeader(t *testing.T) {
+	s := sessionize.Session{
+		CleanExit: true,
+		Playtests: []sessionize.Playtest{
+			{LoadSeconds: 4.5}, {LoadSeconds: 1.9}, {LoadSeconds: 12.2},
+		},
+		ScriptErrors: []sessionize.ScriptError{
+			{Path: "ReplicatedStorage.A", Line: 1, Message: "boom", Count: 62_000},
+			{Path: "ServerScriptService.B", Line: 2, Message: "bang", Count: 684},
+		},
+		ScriptWarningCount: 17,
+	}
+	var buf bytes.Buffer
+	if err := Text(&buf, NewResult(s, nil)); err != nil {
+		t.Fatal(err)
+	}
+	out := buf.String()
+	for _, want := range []string{
+		"Playtests 3", "fastest 1.9s", "slowest 12.2s",
+		"62684 script error(s), 2 distinct",
+		"17 script warning(s)",
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("header missing %q:\n%s", want, out)
+		}
+	}
+}
+
+func TestTextOmitsEmptyHeader(t *testing.T) {
+	var buf bytes.Buffer
+	if err := Text(&buf, NewResult(sessionize.Session{CleanExit: true}, nil)); err != nil {
+		t.Fatal(err)
+	}
+	out := buf.String()
+	for _, unwanted := range []string{"Playtests", "Errors", "Warnings"} {
+		if strings.Contains(out, unwanted) {
+			t.Errorf("printed %q for a session with none:\n%s", unwanted, out)
+		}
+	}
+}
