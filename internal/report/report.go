@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"io"
 	"sort"
+	"strings"
+	"text/tabwriter"
+	"time"
 
 	"github.com/Vliysl/roblox-studio-doctor/internal/rules"
 	"github.com/Vliysl/roblox-studio-doctor/internal/sessionize"
@@ -79,6 +82,66 @@ func Text(w io.Writer, r Result) error {
 		fmt.Fprintln(w)
 	}
 	return nil
+}
+
+// RankedText writes the table of sessions, worst first
+func RankedText(w io.Writer, results []Result) error {
+	if len(results) == 0 {
+		_, err := fmt.Fprintln(w, "nothing to rank")
+		return err
+	}
+	ranked := make([]Result, len(results))
+	copy(ranked, results)
+	sort.SliceStable(ranked, func(i, j int) bool {
+		a, b := ranked[i], ranked[j]
+		if wa, wb := worst(a.Findings), worst(b.Findings); wa != wb {
+			return wa > wb
+		}
+		return a.Session.File.Start.After(b.Session.File.Start)
+	})
+
+	if _, err := fmt.Fprintf(w, "%d session(s), worst first\n\n",
+		len(ranked)); err != nil {
+		return err
+	}
+	tw := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
+	fmt.Fprintln(tw, "START\tBUILD\tDURATION\tCOVERAGE\tFINDINGS")
+	for _, r := range ranked {
+		fmt.Fprintf(tw, "%s\t%s\t%s\t%.1f%%\t%s\n",
+			r.Session.File.Start.Format("2006-01-02 15:04:05"),
+			orDash(r.Session.File.Build),
+			r.Session.Duration().Round(time.Second),
+			r.Session.Coverage.Ratio()*100,
+			summarise(r.Findings))
+	}
+	return tw.Flush()
+}
+
+func worst(fs []rules.Finding) int {
+	high := 0
+	for _, f := range fs {
+		if r := rank(f.Severity); r > high {
+			high = r
+		}
+	}
+	return high
+}
+
+func summarise(fs []rules.Finding) string {
+	if len(fs) == 0 {
+		return "clean"
+	}
+	counts := map[rules.Severity]int{}
+	for _, f := range fs {
+		counts[f.Severity]++
+	}
+	var parts []string
+	for _, sev := range []rules.Severity{rules.Critical, rules.Warn, rules.Info} {
+		if n := counts[sev]; n > 0 {
+			parts = append(parts, fmt.Sprintf("%d %s", n, sev))
+		}
+	}
+	return strings.Join(parts, ", ")
 }
 
 // JSON writes the machine readable report

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/Vliysl/roblox-studio-doctor/internal/rules"
 	"github.com/Vliysl/roblox-studio-doctor/internal/sessionize"
@@ -100,5 +101,74 @@ func TestTextOmitsEmptyHeader(t *testing.T) {
 		if strings.Contains(out, unwanted) {
 			t.Errorf("printed %q for a session with none:\n%s", unwanted, out)
 		}
+	}
+}
+
+func rankedFixture() []Result {
+	at := func(day int) sessionize.Session {
+		var s sessionize.Session
+		s.File.Build = "0.737.0.7371584"
+		s.File.Start = time.Date(2026, 8, day, 10, 0, 0, 0, time.UTC)
+		s.Start = s.File.Start
+		s.End = s.File.Start.Add(time.Hour)
+		s.Coverage.Total, s.Coverage.Parsed = 100, 99
+		return s
+	}
+	warn := []rules.Finding{{Rule: "w", Severity: rules.Warn, Summary: "w", Evidence: []string{"e"}}}
+	crit := []rules.Finding{
+		{Rule: "c", Severity: rules.Critical, Summary: "c", Evidence: []string{"e"}},
+		{Rule: "w", Severity: rules.Warn, Summary: "w", Evidence: []string{"e"}},
+	}
+	return []Result{
+		NewResult(at(4), nil),
+		NewResult(at(2), crit),
+		NewResult(at(3), warn),
+	}
+}
+
+func TestRankedWorstFirst(t *testing.T) {
+	var buf bytes.Buffer
+	if err := RankedText(&buf, rankedFixture()); err != nil {
+		t.Fatal(err)
+	}
+	out := buf.String()
+	crit, warn, clean := strings.Index(out, "1 critical"), strings.Index(out, "1 warn"), strings.Index(out, "clean")
+	if crit < 0 || warn < 0 || clean < 0 {
+		t.Fatalf("missing rows:\n%s", out)
+	}
+	if !(crit < warn && warn < clean) {
+		t.Errorf("wrong order:\n%s", out)
+	}
+	if !strings.Contains(out, "1 critical, 2 warn") &&
+		!strings.Contains(out, "1 critical, 1 warn") {
+		t.Errorf("bad findings column:\n%s", out)
+	}
+	if n := strings.Count(out, "0.737.0.7371584"); n != 3 {
+		t.Errorf("got %d rows, want one per session:\n%s", n, out)
+	}
+	if !strings.Contains(out, "3 session(s), worst first") {
+		t.Errorf("missing the count header:\n%s", out)
+	}
+}
+
+func TestRankedDoesNotMutate(t *testing.T) {
+	in := rankedFixture()
+	first := in[0].Session.File.Start
+	var buf bytes.Buffer
+	if err := RankedText(&buf, in); err != nil {
+		t.Fatal(err)
+	}
+	if !in[0].Session.File.Start.Equal(first) {
+		t.Error("RankedText mutated the input")
+	}
+}
+
+func TestRankedEmpty(t *testing.T) {
+	var buf bytes.Buffer
+	if err := RankedText(&buf, nil); err != nil {
+		t.Fatal(err)
+	}
+	if strings.TrimSpace(buf.String()) == "" {
+		t.Error("empty output")
 	}
 }

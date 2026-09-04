@@ -26,8 +26,29 @@ func run(args []string, stdout, stderr io.Writer) int {
 	fs.SetOutput(stderr)
 	logDir := fs.String("log-dir", "", "Studio log directory (default: auto-detect)")
 	asJSON := fs.Bool("json", false, "emit JSON instead of text")
+	allSessions := fs.Bool("all", false, "analyse every session and print a ranked table")
+	since := fs.String("since", "", "with -all, only sessions started within this window (e.g. 168h)")
 	if err := fs.Parse(args); err != nil {
 		return 2
+	}
+
+	if *allSessions && *asJSON {
+		fmt.Fprintln(stderr, "studio-doctor: -json describes a single session and cannot be combined with -all")
+		return 2
+	}
+
+	var cutoff time.Time
+	if *since != "" {
+		if !*allSessions {
+			fmt.Fprintln(stderr, "studio-doctor: -since only applies with -all")
+			return 2
+		}
+		d, err := time.ParseDuration(*since)
+		if err != nil {
+			fmt.Fprintf(stderr, "studio-doctor: bad -since value %q: %v\n", *since, err)
+			return 2
+		}
+		cutoff = time.Now().Add(-d)
 	}
 
 	dir := *logDir
@@ -64,25 +85,31 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return 3
 	}
 
-	f := files[0]
-	fh, err := os.Open(f.Path)
+	if *allSessions {
+		if !cutoff.IsZero() {
+			files = scan.Since(files, cutoff)
+		}
+		results := make([]report.Result, 0, len(files))
+		for _, f := range files {
+			res, err := analyse(f)
+			if err != nil {
+				fmt.Fprintln(stderr, "studio-doctor:", err)
+				continue
+			}
+			results = append(results, res)
+		}
+		if err := report.RankedText(stdout, results); err != nil {
+			fmt.Fprintln(stderr, "studio-doctor:", err)
+			return 2
+		}
+		return 0
+	}
+
+	res, err := analyse(files[0])
 	if err != nil {
-		fmt.Fprintf(stderr, "studio-doctor: cannot open %s: %v\n", f.Path, err)
+		fmt.Fprintln(stderr, "studio-doctor:", err)
 		return 2
 	}
-	defer fh.Close()
-
-	evs, cov, err := parse.Read(fh)
-	if err != nil {
-		fmt.Fprintf(stderr, "studio-doctor: reading %s: %v\n", f.Path, err)
-		return 2
-	}
-
-	sess := sessionize.Build(f, evs, cov)
-	if st, err := fh.Stat(); err == nil && time.Since(st.ModTime()) < ongoingWindow {
-		sess.Ongoing = true
-	}
-	res := report.NewResult(sess, rules.Apply(sess))
 	if *asJSON {
 		if err := report.JSON(stdout, res); err != nil {
 			fmt.Fprintln(stderr, "studio-doctor:", err)
@@ -95,4 +122,22 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return 2
 	}
 	return 0
+}
+
+func analyse(f scan.SessionFile) (report.Result, error) {
+	fh, err := os.Open(f.Path)
+	if err != nil {
+		return report.Result{}, fmt.Errorf("cannot open %s: %w", f.Path, err)
+	}
+	defer fh.Close()
+
+	evs, cov, err := parse.Read(fh)
+	if err != nil {
+		return report.Result{}, fmt.Errorf("reading %s: %w", f.Path, err)
+	}
+	sess := sessionize.Build(f, evs, cov)
+	if st, err := fh.Stat(); err == nil && time.Since(st.ModTime()) < ongoingWindow {
+		sess.Ongoing = true
+	}
+	return report.NewResult(sess, rules.Apply(sess)), nil
 }

@@ -95,3 +95,81 @@ func TestRunOldLogIsCrash(t *testing.T) {
 		t.Errorf("want crash:\n%s", out.String())
 	}
 }
+
+func writeSessions(t *testing.T, stamps ...string) string {
+	t.Helper()
+	dir := t.TempDir()
+	for _, ts := range stamps {
+		name := "0.737.0.7371584_" + ts + "_Studio_ABCDE_last.log"
+		if err := os.WriteFile(filepath.Join(dir, name), []byte(fixture), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	return dir
+}
+
+func TestRunAllRanksEverySession(t *testing.T) {
+	dir := writeSessions(t,
+		"20260710T100000Z", "20260711T100000Z", "20260712T100000Z")
+	var out bytes.Buffer
+	if code := run([]string{"-log-dir", dir, "-all"}, &out, &bytes.Buffer{}); code != 0 {
+		t.Fatalf("exit = %d, want 0", code)
+	}
+	got := out.String()
+	if !strings.Contains(got, "3 session(s), worst first") {
+		t.Errorf("want a count header:\n%s", got)
+	}
+	for _, day := range []string{"2026-07-10", "2026-07-11", "2026-07-12"} {
+		if !strings.Contains(got, day) {
+			t.Errorf("missing a row for %s:\n%s", day, got)
+		}
+	}
+	if strings.Index(got, "2026-07-12") > strings.Index(got, "2026-07-10") {
+		t.Errorf("wrong order:\n%s", got)
+	}
+	if !strings.Contains(got, "critical") {
+		t.Errorf("rows must summarise what was found:\n%s", got)
+	}
+}
+
+func TestRunAllSince(t *testing.T) {
+	recent := time.Now().UTC().Add(-2 * time.Hour).Format("20060102T150405Z")
+	dir := writeSessions(t, recent, "20200101T100000Z")
+	var out bytes.Buffer
+	if code := run([]string{"-log-dir", dir, "-all", "-since", "24h"}, &out, &bytes.Buffer{}); code != 0 {
+		t.Fatalf("exit = %d", code)
+	}
+	got := out.String()
+	if !strings.Contains(got, "1 session(s), worst first") {
+		t.Errorf("-since must drop the old session:\n%s", got)
+	}
+	if strings.Contains(got, "2020-01-01") {
+		t.Errorf("window not applied:\n%s", got)
+	}
+}
+
+func TestRunAllOneSession(t *testing.T) {
+	var out bytes.Buffer
+	if code := run([]string{"-log-dir", writeFixture(t), "-all"}, &out, &bytes.Buffer{}); code != 0 {
+		t.Fatalf("exit = %d", code)
+	}
+	if !strings.Contains(out.String(), "1 session(s), worst first") {
+		t.Errorf("one session is still a ranking:\n%s", out.String())
+	}
+}
+
+func TestRunRejectsSinceWithoutAll(t *testing.T) {
+	var errBuf bytes.Buffer
+	code := run([]string{"-log-dir", writeFixture(t), "-since", "24h"}, &bytes.Buffer{}, &errBuf)
+	if code != 2 {
+		t.Fatalf("exit = %d, want 2", code)
+	}
+}
+
+func TestRunRejectsBadSinceValue(t *testing.T) {
+	var errBuf bytes.Buffer
+	code := run([]string{"-log-dir", writeFixture(t), "-all", "-since", "a week"}, &bytes.Buffer{}, &errBuf)
+	if code != 2 {
+		t.Fatalf("exit = %d, want 2", code)
+	}
+}
