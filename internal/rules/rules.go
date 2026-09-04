@@ -144,8 +144,11 @@ func originTag(o sessionize.Origin) string {
 }
 
 func location(e sessionize.ScriptError) string {
-	if e.Path == "" {
+	switch {
+	case e.Path == "":
 		return ""
+	case e.Line == 0:
+		return e.Path + ": "
 	}
 	return fmt.Sprintf("%s:%d: ", e.Path, e.Line)
 }

@@ -242,25 +242,78 @@ func TestBuildRanksOwnErrors(t *testing.T) {
 
 func TestOriginByPathRoot(t *testing.T) {
 	cases := []struct {
-		path string
-		want Origin
+		path   string
+		tagged bool
+		want   Origin
 	}{
-		{"ReplicatedStorage.ArtOfWar.Modules.ArmyView", OriginPlace},
-		{"ServerScriptService.Combat", OriginPlace},
-		{"StarterPlayer.StarterPlayerScripts.Client", OriginPlace},
-		{"Workspace", OriginPlace},
-		{"cloud_6230964447.AlignmentPlusPlus.Main", OriginPlugin},
-		{"cloud_123", OriginPlugin},
-		{"CorePackages.Workspace.Packages._Workspace.Chrome", OriginEngine},
-		{"RobloxGui.Modules.Something", OriginEngine},
-		{"", OriginUnknown},
-		{"cloud_notanid.Thing", OriginUnknown},
-		{"SomethingNobodyHasSeen.Script", OriginUnknown},
+		{"ReplicatedStorage.ArtOfWar.Modules.ArmyView", false, OriginPlace},
+		{"ServerScriptService.Combat", false, OriginPlace},
+		{"StarterPlayer.StarterPlayerScripts.Client", false, OriginPlace},
+		{"Workspace", false, OriginPlace},
+		{"cloud_6230964447.AlignmentPlusPlus.Main", false, OriginPlugin},
+		{"cloud_123", false, OriginPlugin},
+		{"sabuiltin_Assistant.rbxm.Assistant.Packages", false, OriginPlugin},
+		{"CorePackages.Workspace.Packages._Workspace.Chrome", false, OriginEngine},
+		{"RobloxGui.Modules.Something", false, OriginEngine},
+		{"", false, OriginUnknown},
+		{"cloud_notanid.Thing", false, OriginUnknown},
+		{"SomethingNobodyHasSeen.Script", false, OriginUnknown},
+
+		{"Script Context.StarterScript", true, OriginEngine},
+		{"SomethingNobodyHasSeen.Script", true, OriginEngine},
+		{"CoreGui.RobloxGui.CoreScripts/MainBotChatScript2", true, OriginEngine},
+		{"ReplicatedStorage.Foo", true, OriginPlace},
+		{"sabuiltin_Assistant.rbxm.Assistant", true, OriginPlugin},
 	}
 	for _, c := range cases {
-		if got := originOf(c.path); got != c.want {
-			t.Errorf("originOf(%q) = %v, want %v", c.path, got, c.want)
+		if got := originOf(c.path, c.tagged); got != c.want {
+			t.Errorf("originOf(%q, tagged=%v) = %v, want %v",
+				c.path, c.tagged, got, c.want)
 		}
+	}
+}
+
+func TestBuildRobloxTag(t *testing.T) {
+	in := strings.Join([]string{
+		errLine("2026-07-12T03:17:47.000Z", `Error: [Roblox][CoreGui.RobloxGui.Modules.Chrome.Integrations.ToggleMic] Not running script because past shutdown deadline`),
+		errLine("2026-07-12T03:17:48.000Z", `Error: [Roblox][sabuiltin_Assistant.rbxm.Assistant.Packages._Index.ReactReconciler] Not running script because past shutdown deadline`),
+		errLine("2026-07-12T03:17:49.000Z", `Error: [Roblox][ReplicatedStorage.Foo.Bar] something the developer wrote`),
+		errLine("2026-07-12T03:17:50.000Z", `Error: Not running script because past shutdown deadline (when calling anonymous function on line 211)`),
+	}, "\n") + "\n"
+	s := build(t, in)
+	if len(s.ScriptErrors) != 4 {
+		t.Fatalf("got %d distinct errors, want 4: %+v", len(s.ScriptErrors), s.ScriptErrors)
+	}
+
+	place := s.ScriptErrors[0]
+	if place.Origin != OriginPlace || place.Path != "ReplicatedStorage.Foo.Bar" {
+		t.Errorf("want place origin, got %+v", place)
+	}
+	if place.Message != "something the developer wrote" {
+		t.Errorf("message must lose the prefix: %q", place.Message)
+	}
+	if unattributed := s.ScriptErrors[1]; unattributed.Origin != OriginUnknown ||
+		unattributed.Path != "" {
+		t.Errorf("want unknown origin, got %+v", unattributed)
+	}
+	if plugin := s.ScriptErrors[2]; plugin.Origin != OriginPlugin {
+		t.Errorf("want plugin origin, got %+v", plugin)
+	}
+	engine := s.ScriptErrors[3]
+	if engine.Origin != OriginEngine {
+		t.Errorf("origin = %v, want engine: %+v", engine.Origin, engine)
+	}
+	if engine.Path != "CoreGui.RobloxGui.Modules.Chrome.Integrations.ToggleMic" {
+		t.Errorf("path must be the inner path: %q", engine.Path)
+	}
+	if engine.Line != 0 {
+		t.Errorf("this form names no line: %d", engine.Line)
+	}
+	if strings.Contains(engine.Message, "[Roblox]") {
+		t.Errorf("message must lose the prefix: %q", engine.Message)
+	}
+	if engine.Message != "Not running script because past shutdown deadline" {
+		t.Errorf("message = %q", engine.Message)
 	}
 }
 

@@ -76,10 +76,10 @@ var originByRoot = map[string]Origin{
 	"RobloxReplicatedStorage": OriginEngine,
 }
 
-var pluginRootRe = regexp.MustCompile(`^cloud_\d+$`)
+var pluginRootRe = regexp.MustCompile(`^(cloud_\d+|sabuiltin_.+)$`)
 
 // Order is very important. Place sorts first so your own bugs show above Roblox's own noise
-func originOf(path string) Origin {
+func originOf(path string, robloxTagged bool) Origin {
 	if path == "" {
 		return OriginUnknown
 	}
@@ -92,6 +92,9 @@ func originOf(path string) Origin {
 	}
 	if pluginRootRe.MatchString(root) {
 		return OriginPlugin
+	}
+	if robloxTagged {
+		return OriginEngine
 	}
 	return OriginUnknown
 }
@@ -146,6 +149,8 @@ var disconnectRe = regexp.MustCompile(
 
 var scriptErrorRe = regexp.MustCompile(`^(.+?):(\d+): (.+)$`)
 
+var robloxTaggedRe = regexp.MustCompile(`^\[Roblox\]\[([^\]]+)\]\s*(.*)$`)
+
 var assetFailRe = regexp.MustCompile(
 	`Received assetFetchFailed\w* signal for asset ID (\d+), expected type (\w+)`)
 
@@ -155,6 +160,7 @@ type scriptErrorKey struct {
 	path    string
 	line    int
 	message string
+	tagged  bool
 }
 
 type assetFailureKey struct {
@@ -207,7 +213,7 @@ func Build(f scan.SessionFile, evs []parse.Event, cov parse.Coverage) Session {
 			if !seen {
 				cur = &ScriptError{
 					Path: k.path, Line: k.line, Message: k.message,
-					Origin:    originOf(k.path),
+					Origin:    originOf(k.path, k.tagged),
 					FirstWall: e.Wall,
 				}
 				errIndex[k] = cur
@@ -268,6 +274,9 @@ func Build(f scan.SessionFile, evs []parse.Event, cov parse.Coverage) Session {
 
 func scriptErrorKeyOf(msg string) scriptErrorKey {
 	text := strings.TrimPrefix(strings.TrimSpace(msg), "Error: ")
+	if m := robloxTaggedRe.FindStringSubmatch(text); m != nil {
+		return scriptErrorKey{path: m[1], message: m[2], tagged: true}
+	}
 	m := scriptErrorRe.FindStringSubmatch(text)
 	if m == nil {
 		return scriptErrorKey{message: text}

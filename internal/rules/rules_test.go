@@ -486,3 +486,32 @@ func TestScriptErrorsInfoOnly(t *testing.T) {
 		t.Error("finding must cite evidence")
 	}
 }
+
+func TestScriptErrorsTaggedNoLine(t *testing.T) {
+
+	s := sessionize.Session{
+		CleanExit: true,
+		ScriptErrors: []sessionize.ScriptError{{
+			Path:    "CoreGui.RobloxGui.Modules.Chrome.Integrations.ToggleMic",
+			Message: "Not running script because past shutdown deadline",
+			Count:   45597,
+			Origin:  sessionize.OriginEngine,
+		}},
+	}
+	f := find(Apply(s), "script-errors")
+	if f == nil {
+		t.Fatal("rule did not fire")
+	}
+	if f.Severity != Info {
+		t.Errorf("severity = %q, want info", f.Severity)
+	}
+	if len(f.Evidence) == 0 {
+		t.Fatal("finding must cite evidence")
+	}
+	if strings.Contains(f.Evidence[0], ":0:") {
+		t.Errorf("bad line number: %q", f.Evidence[0])
+	}
+	if !strings.Contains(f.Evidence[0], "[engine] CoreGui.RobloxGui.Modules.Chrome.Integrations.ToggleMic: ") {
+		t.Errorf("evidence[0] = %q", f.Evidence[0])
+	}
+}
