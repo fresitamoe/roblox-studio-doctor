@@ -1,3 +1,3 @@
-module github.com/Vliysl/roblox-studio-doctor
+module github.com/fresitamoe/roblox-studio-doctor
 
 go 1.22

@@ -5,7 +5,7 @@ import (
 	"io"
 	"strings"
 
-	"github.com/Vliysl/roblox-studio-doctor/internal/parse"
+	"github.com/fresitamoe/roblox-studio-doctor/internal/parse"
 )
 
 // Fixture filters a Studio log through the allowlist for committed test data

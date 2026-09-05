@@ -9,8 +9,8 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/Vliysl/roblox-studio-doctor/internal/rules"
-	"github.com/Vliysl/roblox-studio-doctor/internal/sessionize"
+	"github.com/fresitamoe/roblox-studio-doctor/internal/rules"
+	"github.com/fresitamoe/roblox-studio-doctor/internal/sessionize"
 )
 
 // Schema is the version tag on the JSON output

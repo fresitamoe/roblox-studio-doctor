@@ -13,7 +13,7 @@ If you install it after a crash, it can still tell you about said crash.
 Grab a binary off the releases page, or if you already have Go:
 
 ```bash
-go install github.com/Vliysl/roblox-studio-doctor/cmd/studio-doctor@latest
+go install github.com/fresitamoe/roblox-studio-doctor/cmd/studio-doctor@latest
 ```
 
 ## Use

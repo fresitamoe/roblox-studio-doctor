@@ -7,7 +7,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/Vliysl/roblox-studio-doctor/internal/parse"
+	"github.com/fresitamoe/roblox-studio-doctor/internal/parse"
 )
 
 // Policy is how an allowlisted channel's payload gets treated

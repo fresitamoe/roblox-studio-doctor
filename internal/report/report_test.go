@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Vliysl/roblox-studio-doctor/internal/rules"
-	"github.com/Vliysl/roblox-studio-doctor/internal/sessionize"
+	"github.com/fresitamoe/roblox-studio-doctor/internal/rules"
+	"github.com/fresitamoe/roblox-studio-doctor/internal/sessionize"
 )
 
 func TestTextSaysNothingFound(t *testing.T) {

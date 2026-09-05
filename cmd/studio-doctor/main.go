@@ -7,12 +7,12 @@ import (
 	"os"
 	"time"
 
-	"github.com/Vliysl/roblox-studio-doctor/internal/parse"
-	"github.com/Vliysl/roblox-studio-doctor/internal/paths"
-	"github.com/Vliysl/roblox-studio-doctor/internal/report"
-	"github.com/Vliysl/roblox-studio-doctor/internal/rules"
-	"github.com/Vliysl/roblox-studio-doctor/internal/scan"
-	"github.com/Vliysl/roblox-studio-doctor/internal/sessionize"
+	"github.com/fresitamoe/roblox-studio-doctor/internal/parse"
+	"github.com/fresitamoe/roblox-studio-doctor/internal/paths"
+	"github.com/fresitamoe/roblox-studio-doctor/internal/report"
+	"github.com/fresitamoe/roblox-studio-doctor/internal/rules"
+	"github.com/fresitamoe/roblox-studio-doctor/internal/scan"
+	"github.com/fresitamoe/roblox-studio-doctor/internal/sessionize"
 )
 
 const ongoingWindow = 2 * time.Minute

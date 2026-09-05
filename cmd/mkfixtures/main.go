@@ -6,8 +6,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/Vliysl/roblox-studio-doctor/internal/redact"
-	"github.com/Vliysl/roblox-studio-doctor/internal/scan"
+	"github.com/fresitamoe/roblox-studio-doctor/internal/redact"
+	"github.com/fresitamoe/roblox-studio-doctor/internal/scan"
 )
 
 func main() {

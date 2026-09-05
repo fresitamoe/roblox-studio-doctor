@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Vliysl/roblox-studio-doctor/internal/sessionize"
+	"github.com/fresitamoe/roblox-studio-doctor/internal/sessionize"
 )
 
 // Severity is how serious a finding is

@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Vliysl/roblox-studio-doctor/internal/parse"
+	"github.com/fresitamoe/roblox-studio-doctor/internal/parse"
 )
 
 func TestFixtureRoundTrip(t *testing.T) {
