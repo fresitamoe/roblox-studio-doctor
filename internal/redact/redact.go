@@ -52,7 +52,8 @@ func Events(evs []parse.Event) []parse.Event {
 	return out
 }
 
-// Text swaps identifiers in a string for stable replacements
+// Text swaps identifiers in a string for stand-ins. Same within one run,
+// different between runs, since the salt is new each time
 func Text(s string) string {
 	s = pathRe.ReplaceAllString(s, "${1}user_redacted")
 	return idRe.ReplaceAllStringFunc(s, func(m string) string {

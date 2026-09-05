@@ -8,7 +8,7 @@ import (
 	"github.com/Vliysl/roblox-studio-doctor/internal/parse"
 )
 
-// Fixture turns real log text into something safe to commit
+// Fixture filters a Studio log through the allowlist for committed test data
 func Fixture(r io.Reader) (string, error) {
 	evs, _, err := parse.Read(r)
 	if err != nil {
